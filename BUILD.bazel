@@ -1,0 +1,14 @@
+py_binary(
+    name = "pget",
+    srcs = [
+        "app/__init__.py",
+        "app/cli.py",
+        "app/core.py",
+        "app/__main__.py",
+    ],
+    main = "app/cli.py",
+    python_version = "PY3",
+)
+
+# TODO: Integrate Nuitka build via external rules in a future change.
+
