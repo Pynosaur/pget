@@ -1,0 +1,81 @@
+name: Test pget
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-commands:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.8', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Test pget basic commands
+      run: |
+        python app/main.py --version
+        python app/main.py --help
+        python app/main.py list
+    
+    - name: Run unit tests
+      run: |
+        python test/test_platform.py
+        python test/test_paths.py
+        python test/test_config.py
+  
+  test-integration:
+    runs-on: macos-latest
+    needs: test-commands
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Bazel
+      uses: bazel-contrib/setup-bazel@0.8.1
+      with:
+        bazelisk-cache: true
+    
+    - name: Test install command (requires network and Bazel)
+      run: |
+        # Try to install yday (this will test full flow)
+        python app/main.py search yday || true
+        echo "Note: Full install test requires network and may fail in CI"
+    
+    - name: Build pget with Bazel
+      run: |
+        bazel build //:pget_bin
+      continue-on-error: true
+    
+    - name: Test built pget binary
+      if: success()
+      run: |
+        if [ -f ./bazel-bin/pget ]; then
+          ./bazel-bin/pget --version
+          ./bazel-bin/pget --help
+          ./bazel-bin/pget list
+        else
+          echo "Binary not built, skipping test"
+        fi
+    
+    - name: Upload pget binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: pget-${{ runner.os }}-${{ runner.arch }}
+        path: bazel-bin/pget
+

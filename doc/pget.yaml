@@ -1,0 +1,32 @@
+NAME: pget
+VERSION: "0.1.0"
+DESCRIPTION: >
+  Pure Python package manager for the pynosaur ecosystem
+USAGE:
+  - "pget <command> [options]"
+  - "pget install <app>"
+  - "pget remove <app>"
+  - "pget list"
+  - "pget update <app>"
+  - "pget search [query]"
+COMMANDS:
+  - "install <app>     Install a package from pynosaur"
+  - "remove <app>      Remove an installed package"
+  - "list              List all installed packages"
+  - "update <app>      Update a package to the latest version"
+  - "search [query]    Search for available packages"
+OPTIONS:
+  - "-h, --help        Show this help message"
+  - "-v, --version     Show version information"
+  - "--verbose         Enable verbose output"
+EXAMPLES:
+  - "pget install yday"
+  - "pget list"
+  - "pget update yday"
+  - "pget search"
+  - "pget remove yday"
+OUTPUT: Command execution status and results
+AUTHOR: "@spacemany2k38"
+DATE: "2025-12-25"
+NOTES: []
+
