@@ -14,83 +14,60 @@ from ..utils.paths import get_binary_path, find_existing_binary
 from ..utils.platform import get_platform_string
 
 
-def update_pget_self(logger, installer, fetcher, edge_mode=False):
+def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=False, build_mode=False):
     """Update pget itself (special handling for self-update)."""
     current_version = installer.get_installed_version('pget')
     
-    # In edge mode, always update from main
+    # Determine latest version
     if edge_mode:
+        latest_version = "main"
         logger.info(f"Updating pget from {current_version} to latest main (--edge mode)")
-        logger.info("Edge mode for pget self-update requires local source rebuild")
-        logger.info("Run: cd pget && python3 app/main.py install pget")
-        return False
+    else:
+        release = fetcher.get_latest_release('pget')
+        if not release:
+            logger.error("Could not fetch latest pget release")
+            logger.info(f"Current version: {current_version}")
+            logger.info("Try: pget update --script pget")
+            return False
+        
+        latest_version = release.get("tag_name", "").lstrip('v')
+        
+        if current_version == latest_version and not edge_mode:
+            logger.info(f"pget is already at the latest version ({current_version})")
+            return True
+        
+        logger.info(f"Updating pget from {current_version} to {latest_version}")
     
-    # Get latest version
-    release = fetcher.get_latest_release('pget')
-    if not release:
-        logger.error("Could not fetch latest pget release")
-        logger.info(f"Current version: {current_version}")
-        logger.info("Try updating from source: git pull && bazel build //:pget_bin")
-        return False
-    
-    latest_version = release.get("tag_name", "").lstrip('v')
-    
-    if current_version == latest_version:
-        logger.info(f"pget is already at the latest version ({current_version})")
-        return True
-    
-    logger.info(f"Updating pget from {current_version} to {latest_version}")
-    
-    # Download new version
-    platform = get_platform_string()
-    binary_result = fetcher.download_binary('pget', platform)
-    
-    if not binary_result or not binary_result[0]:
-        logger.error("No binary available for your platform")
-        logger.info("Update from source: git pull && bazel build //:pget_bin && cp bazel-bin/pget ~/.pget/bin/")
-        return False
-    
-    new_binary_path, version = binary_result
+    # Uninstall current version
     current_binary = find_existing_binary('pget') or get_binary_path('pget')
+    installer.uninstall('pget')
     
-    # Backup current binary
-    backup_path = current_binary.parent / "pget.old"
-    if current_binary.exists():
-        shutil.copy(current_binary, backup_path)
-        logger.debug(f"Backed up current pget to {backup_path}")
+    # Reinstall with specified mode
+    from .install import run as install_run
+    install_args = []
+    if edge_mode:
+        install_args.append('--edge')
+    if script_mode:
+        install_args.append('--script')
+    if build_mode:
+        install_args.append('--build')
+    install_args.append('pget')
     
-    # Replace with new binary (no sudo subprocess; fall back if permission denied)
-    try:
-        shutil.copy(new_binary_path, current_binary)
-        current_binary.chmod(current_binary.stat().st_mode | 0o111)  # Make executable
-        replaced = True
-    except Exception:
-        logger.error("Failed to update pget (permission denied); run update with write access to the install path.")
-        replaced = False
-
-    if replaced:
-        logger.success(f"pget updated successfully to {latest_version}")
+    ok = install_run(install_args)
+    if ok:
         logger.info("Restart pget to use the new version")
-        if backup_path.exists():
-            backup_path.unlink()
-        return True
-
-    logger.error("Failed to update pget")
-    if backup_path.exists():
-        shutil.copy(backup_path, current_binary)
-        logger.info("Restored previous version")
-    return False
+    return ok
 
 
 def run(args):
     """Update one or more packages to the latest version.
     
-    Usage: pget update [--edge] [--script] <app1>[,app2...]
-           pget update [--edge] [--script] app1 app2 ...
+    Usage: pget update [--script|--build] [--edge] <app1>[,app2...]
+           pget update [--script|--build] [--edge] app1 app2 ...
     """
     if not args:
         logger = get_logger()
-        logger.error("Usage: pget update [--edge] [--script] <app_name>[,app2...]")
+        logger.error("Usage: pget update [--script|--build] [--edge] <app_name>[,app2...]")
         return False
     
     # Check for --edge flag
@@ -113,6 +90,22 @@ def run(args):
             logger.error("Usage: pget update --script <app_name>[,app2...]")
             return False
     
+    # Check for --build flag
+    build_mode = False
+    if '--build' in args:
+        build_mode = True
+        args = [a for a in args if a != '--build']
+        if not args:
+            logger = get_logger()
+            logger.error("Usage: pget update --build <app_name>[,app2...]")
+            return False
+    
+    # --build and --script are mutually exclusive
+    if script_mode and build_mode:
+        logger = get_logger()
+        logger.error("--build and --script cannot be used together")
+        return False
+    
     def _parse_names(values):
         res = []
         for a in values:
@@ -125,7 +118,7 @@ def run(args):
     names = _parse_names(args)
     if not names:
         logger = get_logger()
-        logger.error("Usage: pget update [--edge] [--script] <app_name>[,app2...]")
+        logger.error("Usage: pget update [--script|--build] [--edge] <app_name>[,app2...]")
         return False
     
     logger = get_logger()
@@ -136,7 +129,7 @@ def run(args):
     for app_name in names:
         # Special handling for self-update
         if app_name == 'pget':
-            ok = update_pget_self(logger, installer, fetcher, edge_mode=edge_mode)
+            ok = update_pget_self(logger, installer, fetcher, edge_mode=edge_mode, script_mode=script_mode, build_mode=build_mode)
             overall = overall and ok
             continue
         
@@ -160,6 +153,8 @@ def run(args):
                 install_args.append('--edge')
             if script_mode:
                 install_args.append('--script')
+            if build_mode:
+                install_args.append('--build')
             install_args.append(app_name)
             ok = install_run(install_args)
             overall = overall and ok
@@ -208,6 +203,8 @@ def run(args):
         install_args = []
         if script_mode:
             install_args.append('--script')
+        if build_mode:
+            install_args.append('--build')
         install_args.append(app_name)
         ok = install_run(install_args)
         overall = overall and ok

@@ -30,12 +30,12 @@ def _parse_names(args):
 def run(args):
     """Install one or more packages.
     
-    Usage: pget install [--script] [--edge] <app1>[,app2...]
-           pget install [--script] [--edge] app1 app2 ...
+    Usage: pget install [--script|--build] [--edge] <app1>[,app2...]
+           pget install [--script|--build] [--edge] app1 app2 ...
     """
     if not args:
         logger = get_logger()
-        logger.error("Usage: pget install [--script] [--edge] <app_name>[,app2...]")
+        logger.error("Usage: pget install [--script|--build] [--edge] <app_name>[,app2...]")
         return False
     
     # Check for --script flag (accept anywhere in args)
@@ -47,6 +47,23 @@ def run(args):
             logger = get_logger()
             logger.error("Usage: pget install --script <app_name>[,app2...]")
             return False
+    
+    # Check for --build flag (accept anywhere in args)
+    build_mode = False
+    if '--build' in args:
+        build_mode = True
+        args = [a for a in args if a != '--build']
+        if not args:
+            logger = get_logger()
+            logger.error("Usage: pget install --build <app_name>[,app2...]")
+            return False
+    
+    # --build and --script are mutually exclusive
+    if script_mode and build_mode:
+        logger = get_logger()
+        logger.error("--build and --script cannot be used together")
+        logger.info("Use --build to compile from source, or --script for Python wrapper")
+        return False
     
     # Check for --edge flag (accept anywhere in args)
     edge_mode = False
@@ -60,10 +77,10 @@ def run(args):
     
     names = _parse_names(args)
     # Guard against stray flag tokens
-    names = [n for n in names if n not in ('--script', '--edge')]
+    names = [n for n in names if n not in ('--script', '--edge', '--build')]
     if not names:
         logger = get_logger()
-        logger.error("Usage: pget install [--script] [--edge] <app_name>[,app2...]")
+        logger.error("Usage: pget install [--script|--build] [--edge] <app_name>[,app2...]")
         return False
     
     logger = get_logger()
@@ -156,6 +173,8 @@ def run(args):
         logger.info(f"Installing {app_name}")
         if edge_mode:
             logger.info("Using --edge mode (latest main branch)")
+        if build_mode:
+            logger.info("Using --build mode (compile from source)")
         
         # Check if repo exists
         repo_info = fetcher.get_repo_info(app_name)
@@ -183,8 +202,8 @@ def run(args):
         installed_version = None
         install_platform = None
         
-        # Skip binary download if --script flag is set
-        if not script_mode:
+        # Skip binary download if --script or --build flag is set
+        if not script_mode and not build_mode:
             # Try to download binary first (release asset)
             binary_result = fetcher.download_binary(app_name, platform)
             if binary_result and binary_result[0]:
@@ -220,16 +239,23 @@ def run(args):
             
             source_path, version = source_result
             
-            # Install as script if requested or no Bazel
+            # Install as script if requested
             if script_mode:
                 logger.info("Installing as Python script (no compilation)")
                 success = install_as_script(source_path, app_name, version, source_url)
                 installed_version = version
                 install_platform = "script"
+            # Build from source if requested or no binary available
             else:
                 # Check if Bazel is available
                 bazel = shutil.which("bazelisk") or shutil.which("bazel")
                 if not bazel:
+                    if build_mode:
+                        logger.error("--build requires Bazel but it's not installed")
+                        logger.info("Install Bazel or use: pget install --script <app>")
+                        overall_success = False
+                        continue
+                    
                     logger.error("No release binary found; Bazel required for building")
                     logger.info("Bazel not found. Install as script instead?")
                     
@@ -255,7 +281,10 @@ def run(args):
                     continue
                 
                 # Build with Bazel
-                logger.info("No release binary found; building with Bazel+Nuitka")
+                if build_mode:
+                    logger.info("Building from source with Bazel+Nuitka (--build mode)")
+                else:
+                    logger.info("No release binary found; building with Bazel+Nuitka")
                 success = installer.install_with_bazel(
                     source_path=source_path,
                     app_name=app_name,
