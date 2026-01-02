@@ -4,6 +4,8 @@
 # 2025-12-24
 
 import shutil
+import urllib.error
+import urllib.request
 from pathlib import Path
 from ..core.config import IGNORED_REPOS
 from ..core.fetcher import GitHubFetcher
@@ -11,7 +13,7 @@ from ..core.installer import Installer
 from ..core.script_installer import install_as_script
 from ..utils.platform import get_platform_string
 from ..utils.logger import get_logger
-from ..utils.paths import ensure_system_path, ensure_path_in_shell
+from ..utils.paths import ensure_path_in_shell
 from .. import __version__ as PGET_VERSION
 
 
@@ -115,17 +117,12 @@ def run(args):
                         version=PGET_VERSION,
                         source_url=str(source_path),
                         platform=platform,
-                        prefer_system=not script_mode,
                     )
             
             overall_success = overall_success and success
             if app_name == "pget" and success:
-                added = ensure_system_path()
                 ensure_path_in_shell()
-                if added:
-                    logger.info("System PATH updated via /etc/paths.d (sudo). Open a new shell to use 'pget'.")
-                else:
-                    logger.warning("System PATH not updated (no sudo?). Add ~/.pget/bin to PATH or rerun with sudo.")
+                logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
             continue
 
         # Check if already installed and get available version
@@ -167,6 +164,18 @@ def run(args):
             overall_success = False
             continue
         
+        # Check if repo has .program marker (indicates it's an installable app)
+        from ..core.config import GITHUB_RAW, PYNOSAUR_ORG
+        program_url = f"{GITHUB_RAW}/{PYNOSAUR_ORG}/{app_name}/main/.program"
+        try:
+            req = urllib.request.Request(program_url)
+            urllib.request.urlopen(req, timeout=5)
+        except (urllib.error.HTTPError, urllib.error.URLError):
+            logger.error(f"'{app_name}' is not an installable program (missing .program marker)")
+            logger.info("This repository may be a website or documentation-only repo")
+            overall_success = False
+            continue
+        
         platform = get_platform_string()
         source_url = repo_info.get("html_url", "")
         
@@ -174,31 +183,32 @@ def run(args):
         installed_version = None
         install_platform = None
         
-        # Try to download binary first (release asset)
-        binary_result = fetcher.download_binary(app_name, platform)
-        if binary_result and binary_result[0]:
-            binary_path, version = binary_result
-            
-            # Also download source for documentation
-            logger.debug("Downloading source for documentation")
-            source_result = fetcher.download_app_directory(app_name, edge=edge_mode)
-            source_path = source_result[0] if source_result else None
-            
-            # Install binary
-            success = installer.install_binary(
-                binary_path=binary_path,
-                app_name=app_name,
-                version=version,
-                source_url=source_url,
-                platform=platform,
-                prefer_system=not script_mode,
-            )
-            installed_version = version
-            install_platform = platform
-            
-            # Install documentation if source was downloaded
-            if success and source_path:
-                installer.install_doc_files(source_path, app_name)
+        # Skip binary download if --script flag is set
+        if not script_mode:
+            # Try to download binary first (release asset)
+            binary_result = fetcher.download_binary(app_name, platform)
+            if binary_result and binary_result[0]:
+                binary_path, version = binary_result
+                
+                # Also download source for documentation
+                logger.debug("Downloading source for documentation")
+                source_result = fetcher.download_app_directory(app_name, edge=edge_mode)
+                source_path = source_result[0] if source_result else None
+                
+                # Install binary
+                success = installer.install_binary(
+                    binary_path=binary_path,
+                    app_name=app_name,
+                    version=version,
+                    source_url=source_url,
+                    platform=platform,
+                )
+                installed_version = version
+                install_platform = platform
+                
+                # Install documentation if source was downloaded
+                if success and source_path:
+                    installer.install_doc_files(source_path, app_name)
         
         if not success:
             # Download source
@@ -232,12 +242,8 @@ def run(args):
                             install_platform = "script"
                             # Add PATH for pget install if script
                             if app_name == "pget":
-                                added = ensure_system_path()
                                 ensure_path_in_shell()
-                                if added:
-                                    logger.info("System PATH updated via /etc/paths.d (sudo). Open a new shell to use 'pget'.")
-                                else:
-                                    logger.warning("System PATH not updated (no sudo?). Add ~/.pget/bin to PATH or rerun with sudo.")
+                                logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
                             overall_success = overall_success and success
                             continue
                     except (KeyboardInterrupt, EOFError):
@@ -256,19 +262,14 @@ def run(args):
                     version=version,
                     source_url=source_url,
                     platform=platform,
-                    prefer_system=not script_mode,
                 )
                 installed_version = version
                 install_platform = platform
         
         # Add PATH for pget install
         if app_name == "pget" and success:
-            added = ensure_system_path()
             ensure_path_in_shell()
-            if added:
-                logger.info("System PATH updated via /etc/paths.d (sudo). Open a new shell to use 'pget'.")
-            else:
-                logger.warning("System PATH not updated (no sudo?). Add ~/.pget/bin to PATH or rerun with sudo.")
+            logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
         
         overall_success = overall_success and success
     

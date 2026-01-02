@@ -9,7 +9,6 @@ import subprocess
 from pathlib import Path
 from ..utils.paths import (
     get_binary_path,
-    get_system_binary_path,
     find_existing_binary,
     get_doc_dir,
     get_app_dir,
@@ -28,21 +27,6 @@ class Installer:
     def __init__(self):
         self.logger = get_logger()
         ensure_dirs()
-
-    def _try_copy(self, src: Path, dest: Path):
-        """Attempt to copy binary without sudo."""
-        try:
-            dest.parent.mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            # Will try sudo later if needed
-            pass
-
-        try:
-            shutil.copy(src, dest)
-            dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-            return True
-        except PermissionError:
-            return False
 
     def install_doc_files(self, source_path, app_name):
         """Install app documentation files to helpers/<name>/doc/."""
@@ -65,24 +49,18 @@ class Installer:
         shutil.copytree(doc_source, doc_dest)
         self.logger.debug(f"Installed documentation for {app_name}")
     
-    def install_binary(self, binary_path, app_name, version, source_url, platform, prefer_system=True):
-        """Install binary to system bin if possible, else fall back to user bin."""
+    def install_binary(self, binary_path, app_name, version, source_url, platform):
+        """Install binary to ~/.pget/bin."""
         dest = get_binary_path(app_name)
-        system_dest = get_system_binary_path(app_name) if prefer_system else None
-
-        if system_dest:
-            self.logger.progress(f"Installing {app_name} to {system_dest}")
-            if self._try_copy(binary_path, system_dest):
-                dest = system_dest
-            else:
-                self.logger.warning("System install unavailable (permission denied); falling back to user install (~/.pget/bin)")
-                dest = get_binary_path(app_name)
-        else:
-            self.logger.progress(f"Installing {app_name} to {dest}")
-
-        if dest == get_binary_path(app_name):
-            self._try_copy(binary_path, dest)
-
+        
+        self.logger.progress(f"Installing {app_name} to {dest}")
+        
+        # Copy binary to bin directory
+        shutil.copy(binary_path, dest)
+        
+        # Make executable
+        dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        
         # Save metadata
         save_package_info(app_name, version, source_url, platform)
         
@@ -90,7 +68,7 @@ class Installer:
         ensure_path_in_shell()
         return True
 
-    def install_with_bazel(self, source_path, app_name, version, source_url, platform, prefer_system=True):
+    def install_with_bazel(self, source_path, app_name, version, source_url, platform):
         """Build and install using Bazel (required when no release binary)."""
         module_bazel = source_path / "MODULE.bazel"
         build_file = source_path / "BUILD"
@@ -132,20 +110,11 @@ class Installer:
             self.logger.error(f"Bazel artifact not found: {built_path}")
             return False
 
-        system_dest = get_system_binary_path(app_name) if prefer_system else None
         dest = get_binary_path(app_name)
-
-        if system_dest:
-            self.logger.progress(f"Installing {app_name} to {system_dest}")
-            if self._try_copy(built_path, system_dest):
-                dest = system_dest
-            else:
-                self.logger.warning("System install unavailable (permission denied); falling back to user install (~/.pget/bin)")
-        else:
-            self.logger.progress(f"Installing {app_name} to {dest}")
-
-        if dest == get_binary_path(app_name):
-            self._try_copy(built_path, dest)
+        
+        self.logger.progress(f"Installing {app_name} to {dest}")
+        shutil.copy(built_path, dest)
+        dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         
         # Install documentation
         self.install_doc_files(source_path, app_name)
