@@ -1,0 +1,49 @@
+NAME: pget
+VERSION: "0.1.0"
+DESCRIPTION: >
+  Pure Python package manager for the Pynosaur ecosystem. Installs, updates, lists, and removes Pynosaur CLI tools. Supports two installation modes:
+
+    • Binary (default): downloads prebuilt onefile binaries when available.
+    • Script (--script): installs source into ~/.pget/scripts/<app> with a launcher in ~/.pget/bin/.
+
+  Self-install adds ~/.pget/bin to PATH (tries system-wide via sudo /etc/paths.d, falls back to user shell rc). Self-update is handled specially to avoid deleting the running binary. Uses Bazel+Nuitka builds when no release binary exists and the user opts to build instead of script mode.
+USAGE:
+  - "pget <command> [options]"
+  - "pget install [--script] <app>[,app2...]"
+  - "pget install [--script] app1 app2 ..."
+  - "pget remove <app>[,app2...]"
+  - "pget remove app1 app2 ..."
+  - "pget update <app>[,app2...]"
+  - "pget update app1 app2 ..."
+  - "pget list"
+  - "pget search [query]"
+COMMANDS:
+  - "install [--script] <app>[,app2...]   Install one or more packages (binary preferred; script if requested or build not possible)"
+  - "remove <app>[,app2...]               Remove one or more installed packages"
+  - "list                                 List installed binaries and scripts"
+  - "update <app>[,app2...]               Update one or more packages to latest version (handles self-update safely)"
+  - "search [query]                       Search for available packages"
+OPTIONS:
+  - "-h, --help              Show help message"
+  - "-v, --version           Show version information"
+  - "--verbose               Enable verbose output"
+  - "--script                Install as Python script (no Bazel required) [applies to all apps in the same command]"
+EXAMPLES:
+  - "pget install yday                 # Install latest release binary if available"
+  - "pget install --script see         # Force script mode (no Bazel required)"
+  - "pget update pget                  # Self-update with safety swap"
+  - "pget list                         # Show installed binaries and scripts"
+  - "pget search                       # List available packages"
+  - "pget remove yday                  # Uninstall package"
+OUTPUT: >
+  Command execution status and results. Exit code 0 on success; non-zero on errors (missing package, network failure, build failure, etc.).
+AUTHOR: "@spacemany2k38"
+DATE: "2025-12-25"
+NOTES:
+  - "PATH: attempts /etc/paths.d via sudo for ~/.pget/bin; falls back to user shell rc."
+  - "Script installs: source in ~/.pget/scripts/<app>/, launcher in ~/.pget/bin/<app>."
+  - "Binary installs: binaries in ~/.pget/bin/; helper docs/data in ~/.pget/helpers/<app>/."
+  - "Self-update: replaces running binary via temporary swap; old binary cleaned up on next run."
+  - "Build fallback: uses Bazel+Nuitka when no release asset and user chooses to build."
+  - "Exit codes reflect command success/failure; stderr carries error details."
+
