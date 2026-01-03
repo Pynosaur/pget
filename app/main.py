@@ -12,7 +12,7 @@ if __name__ == "__main__" and __package__ is None:
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     __package__ = "app"
 
-from app.commands import install, remove, update, search
+from app.commands import install, remove, update, search, versions
 from app.commands import list as list_cmd
 from app.utils.logger import get_logger, set_verbose
 from app.utils.paths import PGET_BIN
@@ -26,6 +26,7 @@ COMMANDS = {
     'list': list_cmd.run,
     'update': update.run,
     'search': search.run,
+    'versions': versions.run,
 }
 
 

@@ -16,7 +16,12 @@ from ..utils.platform import get_platform_string
 
 def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=False, build_mode=False):
     """Update pget itself (special handling for self-update)."""
+    from ..core.script_installer import install_as_script
+    from ..utils.platform import get_platform_string
+    from pathlib import Path
+    
     current_version = installer.get_installed_version('pget')
+    current_binary = find_existing_binary('pget') or get_binary_path('pget')
     
     # Determine latest version
     if edge_mode:
@@ -38,25 +43,78 @@ def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=Fa
         
         logger.info(f"Updating pget from {current_version} to {latest_version}")
     
-    # Uninstall current version
-    current_binary = find_existing_binary('pget') or get_binary_path('pget')
-    installer.uninstall('pget')
+    # For script mode, use uninstall+reinstall (wrapper not locked)
+    if script_mode or not current_binary.exists():
+        installer.uninstall('pget')
+        from .install import run as install_run
+        install_args = ['--script'] if script_mode else []
+        if edge_mode:
+            install_args.append('--edge')
+        install_args.append('pget')
+        ok = install_run(install_args)
+        if ok:
+            logger.info("Restart pget to use the new version")
+        return ok
     
-    # Reinstall with specified mode
-    from .install import run as install_run
-    install_args = []
-    if edge_mode:
-        install_args.append('--edge')
-    if script_mode:
-        install_args.append('--script')
-    if build_mode:
-        install_args.append('--build')
-    install_args.append('pget')
+    # For binary mode: download and swap (can't delete running binary)
+    platform = get_platform_string()
     
-    ok = install_run(install_args)
-    if ok:
-        logger.info("Restart pget to use the new version")
-    return ok
+    if build_mode or (not edge_mode and not script_mode):
+        # Try downloading binary first (unless build mode)
+        if not build_mode:
+            binary_result = fetcher.download_binary('pget', platform)
+            if binary_result and binary_result[0]:
+                new_binary_path, _ = binary_result
+                
+                # Backup and replace strategy
+                backup_path = current_binary.parent / "pget.old"
+                try:
+                    # Make current binary writable
+                    if current_binary.exists():
+                        current_binary.chmod(0o755)
+                        shutil.copy(current_binary, backup_path)
+                        logger.debug(f"Backed up to {backup_path}")
+                    
+                    # Replace (unlink first to avoid permission issues)
+                    if current_binary.exists():
+                        current_binary.unlink()
+                    
+                    shutil.copy(new_binary_path, current_binary)
+                    current_binary.chmod(0o755)
+                    
+                    # Update metadata
+                    from ..utils.metadata import save_package_info
+                    save_package_info('pget', latest_version, f"https://github.com/pynosaur/pget", platform)
+                    
+                    logger.success(f"pget updated to {latest_version}")
+                    logger.info("Restart pget to use the new version")
+                    
+                    # Remove backup immediately if successful
+                    if backup_path.exists():
+                        try:
+                            backup_path.chmod(0o755)  # Ensure writable
+                            backup_path.unlink()
+                            logger.debug("Removed backup file")
+                        except Exception as e:
+                            logger.debug(f"Could not remove backup: {e}")
+                    
+                    return True
+                except Exception as e:
+                    logger.error(f"Failed to update: {e}")
+                    # Restore from backup
+                    if backup_path.exists() and not current_binary.exists():
+                        try:
+                            shutil.copy(backup_path, current_binary)
+                            current_binary.chmod(0o755)
+                            logger.info("Restored previous version")
+                        except:
+                            pass
+                    return False
+    
+    # Build from source if requested or no binary available
+    logger.info("Building pget from source for self-update")
+    logger.info("Use: cd pget && python3 app/main.py install pget")
+    return False
 
 
 def run(args):

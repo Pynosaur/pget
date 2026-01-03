@@ -25,12 +25,14 @@ def run(args):
                     scripts.add(f.name)
     scripts = sorted(scripts)
     
-    # Check binaries (exclude script wrappers)
+    # Check binaries (exclude script wrappers and backups)
     binaries = []
     if PGET_BIN.exists():
         for f in PGET_BIN.iterdir():
             if f.is_file() and not f.name.startswith('.'):
-                # Skip if this is a script wrapper
+                # Skip backup files and script wrappers
+                if f.name.endswith('.old') or f.name.endswith('.bak'):
+                    continue
                 if f.name not in scripts:
                     binaries.append(f.name)
         binaries = sorted(binaries)

@@ -18,13 +18,23 @@ from .. import __version__ as PGET_VERSION
 
 
 def _parse_names(args):
-    names = []
+    """Parse app names with optional version specs.
+    
+    Returns list of tuples: [(app_name, version), ...]
+    where version is None for latest or a string like "0.1.0"
+    """
+    apps = []
     for a in args:
         for part in a.split(","):
             part = part.strip()
             if part:
-                names.append(part)
-    return names
+                # Parse app@version syntax
+                if '@' in part:
+                    app_name, version = part.split('@', 1)
+                    apps.append((app_name.strip(), version.strip()))
+                else:
+                    apps.append((part, None))
+    return apps
 
 
 def run(args):
@@ -88,7 +98,10 @@ def run(args):
     installer = Installer()
     overall_success = True
     
-    for app_name in names:
+    for app_spec in names:
+        # Unpack app name and optional version
+        app_name, requested_version = app_spec if isinstance(app_spec, tuple) else (app_spec, None)
+        
         if app_name in IGNORED_REPOS:
             logger.info(f"Skipping non-installable repo '{app_name}' (marked as webpage)")
             overall_success = False
@@ -146,32 +159,51 @@ def run(args):
         if installer.is_installed(app_name):
             current_version = installer.get_installed_version(app_name)
             
-            # Determine installation type
-            from ..utils.metadata import get_package_info
-            pkg_info = get_package_info(app_name)
-            install_type = pkg_info.get('platform', 'unknown') if pkg_info else 'unknown'
-            
-            type_msg = "script version" if install_type == 'script' else "binary version"
-            
-            # Check for newer version
-            release = fetcher.get_latest_release(app_name)
-            if release:
-                latest_version = release.get("tag_name", "unknown")
-                if latest_version != current_version and latest_version != "unknown":
-                    logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
-                    logger.info(f"Version {latest_version} is available")
-                    logger.info("Use 'pget update' to upgrade")
+            # Allow reinstall if specific version is requested
+            if requested_version:
+                requested_tag = f"v{requested_version}" if not requested_version.startswith('v') else requested_version
+                current_tag = f"v{current_version}" if not current_version.startswith('v') else current_version
+                
+                if requested_tag == current_tag:
+                    logger.warning(f"{app_name} {requested_version} is already installed")
+                    logger.info("Use 'pget remove' to uninstall first if you want to reinstall")
+                    overall_success = False
+                    continue
+                else:
+                    logger.info(f"Replacing {app_name} {current_version} with {requested_version}")
+                    installer.uninstall(app_name)
+                    # Continue with installation
+            else:
+                # No specific version requested, check for updates
+                from ..utils.metadata import get_package_info
+                pkg_info = get_package_info(app_name)
+                install_type = pkg_info.get('platform', 'unknown') if pkg_info else 'unknown'
+                
+                type_msg = "script version" if install_type == 'script' else "binary version"
+                
+                # Check for newer version
+                release = fetcher.get_latest_release(app_name)
+                if release:
+                    latest_version = release.get("tag_name", "unknown")
+                    if latest_version != current_version and latest_version != "unknown":
+                        logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
+                        logger.info(f"Version {latest_version} is available")
+                        logger.info("Use 'pget update' to upgrade")
+                    else:
+                        logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
                 else:
                     logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
-            else:
-                logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
-            
-            logger.info("Use 'pget remove' to uninstall first if you want to reinstall")
-            overall_success = False
-            continue
+                
+                logger.info("Use 'pget remove' to uninstall first if you want to reinstall")
+                overall_success = False
+                continue
         
         logger.info(f"Installing {app_name}")
-        if edge_mode:
+        if requested_version:
+            logger.info(f"Requesting version {requested_version}")
+            if edge_mode:
+                logger.warning("--edge ignored when specific version is requested")
+        elif edge_mode:
             logger.info("Using --edge mode (latest main branch)")
         if build_mode:
             logger.info("Using --build mode (compile from source)")
@@ -205,13 +237,15 @@ def run(args):
         # Skip binary download if --script or --build flag is set
         if not script_mode and not build_mode:
             # Try to download binary first (release asset)
-            binary_result = fetcher.download_binary(app_name, platform)
+            binary_result = fetcher.download_binary(app_name, platform, version=requested_version)
             if binary_result and binary_result[0]:
                 binary_path, version = binary_result
                 
                 # Also download source for documentation
                 logger.debug("Downloading source for documentation")
-                source_result = fetcher.download_app_directory(app_name, edge=edge_mode)
+                # Don't use edge mode if specific version requested
+                use_edge = edge_mode and not requested_version
+                source_result = fetcher.download_app_directory(app_name, edge=use_edge, version=requested_version)
                 source_path = source_result[0] if source_result else None
                 
                 # Install binary
@@ -231,7 +265,9 @@ def run(args):
         
         if not success:
             # Download source
-            source_result = fetcher.download_app_directory(app_name, edge=edge_mode)
+            # Don't use edge mode if specific version requested
+            use_edge = edge_mode and not requested_version
+            source_result = fetcher.download_app_directory(app_name, edge=use_edge, version=requested_version)
             if not source_result or not source_result[0]:
                 logger.error(f"Failed to download {app_name}")
                 overall_success = False

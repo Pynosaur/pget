@@ -48,7 +48,17 @@ def get_package_info(app_name):
 
 
 def get_package_version(app_name):
-    """Get installed package version from doc file."""
+    """Get installed package version from metadata or doc file."""
+    # Try metadata file first (more reliable for binary installs)
+    pkg_info = get_package_info(app_name)
+    if pkg_info and 'version' in pkg_info:
+        version = pkg_info['version']
+        # Strip 'v' prefix if present
+        if version and version.startswith('v'):
+            return version[1:]
+        return version
+    
+    # Fallback to doc file
     doc_dir = get_doc_dir(app_name)
     doc_file = doc_dir / f"{app_name}.yaml"
     

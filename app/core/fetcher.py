@@ -74,6 +74,24 @@ class GitHubFetcher:
         url = f"{self.api_base}/repos/{self.org}/{app_name}/releases/latest"
         self.logger.debug(f"Fetching latest release: {url}")
         return self._api_request(url)
+    
+    def get_release_by_tag(self, app_name, tag):
+        """Get specific release by tag.
+        
+        Args:
+            app_name: Name of the app
+            tag: Tag name (e.g., "v0.1.0" or "0.1.0")
+        
+        Returns:
+            Release info dict or None if not found
+        """
+        # Ensure tag has 'v' prefix
+        if not tag.startswith('v'):
+            tag = f"v{tag}"
+        
+        url = f"{self.api_base}/repos/{self.org}/{app_name}/releases/tags/{tag}"
+        self.logger.debug(f"Fetching release {tag}: {url}")
+        return self._api_request(url)
 
     def _download_release_asset(self, app_name, release, asset_name):
         """Download a named asset from a GitHub release."""
@@ -92,38 +110,65 @@ class GitHubFetcher:
         result = self._download_file(download_url, cache_path)
         return result
     
-    def download_binary(self, app_name, platform=None):
-        """Download compiled binary for platform with manifest verification."""
+    def download_binary(self, app_name, platform=None, version=None):
+        """Download compiled binary for platform.
+        
+        Args:
+            app_name: Name of the app
+            platform: Platform string (default: auto-detect)
+            version: Specific version to download (e.g., "0.1.0"), or None for latest
+        
+        Returns:
+            Tuple of (binary_path, version) or (None, None) if not found
+        """
         if platform is None:
             platform = get_platform_string()
 
         self.logger.progress(f"Looking for binary: {app_name}-{platform}")
 
-        # Get latest release
-        release = self.get_latest_release(app_name)
-        if not release:
-            self.logger.debug("No releases found")
-            return None, None
+        # Get specific or latest release
+        if version:
+            release = self.get_release_by_tag(app_name, version)
+            if not release:
+                self.logger.error(f"Release v{version} not found for {app_name}")
+                return None, None
+        else:
+            release = self.get_latest_release(app_name)
+            if not release:
+                self.logger.debug("No releases found")
+                return None, None
 
-        version = release.get("tag_name", "unknown")
+        version_tag = release.get("tag_name", "unknown")
         binary_name = f"{app_name}-{platform}"
 
         cache_path = self._download_release_asset(app_name, release, binary_name)
         if not cache_path:
             self.logger.debug(f"No binary found for {platform}")
-            return None, version
+            return None, version_tag
 
-        return cache_path, version
+        return cache_path, version_tag
     
-    def download_source(self, app_name, ref="main", edge=False):
+    def download_source(self, app_name, ref="main", edge=False, version=None):
         """Download source code archive.
         
         Args:
             app_name: Name of the app
             ref: Git ref to download (default: main)
             edge: If True, always use main branch; if False, prefer latest release
+            version: Specific version to download (e.g., "0.1.0"), overrides edge mode
         """
         self.logger.progress(f"Downloading source for {app_name}")
+
+        # Use specific version if provided
+        if version:
+            tag = f"v{version}" if not version.startswith('v') else version
+            url = f"{self.api_base}/repos/{self.org}/{app_name}/tarball/{tag}"
+            cache_path = get_cache_path(app_name, f"{app_name}-{tag}.tar.gz")
+            result = self._download_file(url, cache_path)
+            if result:
+                return result, tag
+            self.logger.error(f"Failed to download source for version {version}")
+            return None, None
 
         # Use latest release tag if not in edge mode
         if not edge:
@@ -146,15 +191,16 @@ class GitHubFetcher:
 
         return None, None
 
-    def download_app_directory(self, app_name, ref="main", edge=False):
+    def download_app_directory(self, app_name, ref="main", edge=False, version=None):
         """Download full source tarball and extract.
         
         Args:
             app_name: Name of the app
             ref: Git ref to download (default: main)
             edge: If True, use main branch; if False, prefer latest release
+            version: Specific version to download (e.g., "0.1.0")
         """
-        tar_path, version = self.download_source(app_name, ref, edge=edge)
+        tar_path, version_tag = self.download_source(app_name, ref, edge=edge, version=version)
         if not tar_path:
             return None
 
@@ -177,7 +223,7 @@ class GitHubFetcher:
             self.logger.error("Extracted archive is empty")
             return None
 
-        return children[0], version
+        return children[0], version_tag
     
     def _download_directory(self, api_url, dest_dir):
         """Recursively download directory contents."""
