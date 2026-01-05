@@ -85,16 +85,22 @@ def run(args):
             logger.error("Usage: pget install --edge <app_name>[,app2...]")
             return False
     
+    # Check for --no-verify-ssl flag (accept anywhere in args)
+    no_verify_ssl = False
+    if '--no-verify-ssl' in args:
+        no_verify_ssl = True
+        args = [a for a in args if a != '--no-verify-ssl']
+    
     names = _parse_names(args)
     # Guard against stray flag tokens
-    names = [n for n in names if n not in ('--script', '--edge', '--build')]
+    names = [n for n in names if n not in ('--script', '--edge', '--build', '--no-verify-ssl')]
     if not names:
         logger = get_logger()
-        logger.error("Usage: pget install [--script|--build] [--edge] <app_name>[,app2...]")
+        logger.error("Usage: pget install [--script|--build] [--edge] [--no-verify-ssl] <app_name>[,app2...]")
         return False
     
     logger = get_logger()
-    fetcher = GitHubFetcher()
+    fetcher = GitHubFetcher(verify_ssl=not no_verify_ssl)
     installer = Installer()
     overall_success = True
     
@@ -107,8 +113,8 @@ def run(args):
             overall_success = False
             continue
 
-        # Special-case installing pget itself from the local repo to avoid stale releases
-        if app_name == "pget":
+        # Special-case installing pget itself from the local repo (only if no specific version requested)
+        if app_name == "pget" and not requested_version:
             logger.info("Installing pget from local source")
             source_path = Path(__file__).resolve().parents[2]
             platform = get_platform_string()

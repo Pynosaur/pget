@@ -121,6 +121,12 @@ def main():
         build_mode = True
         args = [a for a in args if a != '--build']
     
+    # Check for no-verify-ssl flag globally (pass through to install/update command)
+    no_verify_ssl = False
+    if '--no-verify-ssl' in args:
+        no_verify_ssl = True
+        args = [a for a in args if a != '--no-verify-ssl']
+    
     # Get command
     if not args:
         print_help()
@@ -137,6 +143,8 @@ def main():
             command_args = ['--script'] + command_args
         if build_mode:
             command_args = ['--build'] + command_args
+        if no_verify_ssl:
+            command_args = ['--no-verify-ssl'] + command_args
     
     # Execute command
     if command in COMMANDS:

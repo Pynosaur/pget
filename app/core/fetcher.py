@@ -4,6 +4,7 @@
 # 2025-12-24
 
 import json
+import ssl
 import tarfile
 import urllib.error
 import urllib.request
@@ -17,11 +18,19 @@ from .config import GITHUB_API, GITHUB_RAW, PYNOSAUR_ORG
 class GitHubFetcher:
     """Fetches packages from GitHub pynosaur organization."""
     
-    def __init__(self):
+    def __init__(self, verify_ssl=True):
         self.logger = get_logger()
         self.org = PYNOSAUR_ORG
         self.api_base = GITHUB_API
         self.raw_base = GITHUB_RAW
+        self.verify_ssl = verify_ssl
+        
+        # Create SSL context if needed
+        if not verify_ssl:
+            self.ssl_context = ssl._create_unverified_context()
+            self.logger.warning("SSL verification disabled - not recommended for security!")
+        else:
+            self.ssl_context = None
     
     def _api_request(self, url):
         """Make API request to GitHub."""
@@ -29,22 +38,53 @@ class GitHubFetcher:
             req = urllib.request.Request(url)
             req.add_header('Accept', 'application/vnd.github.v3+json')
             
-            with urllib.request.urlopen(req, timeout=30) as response:
+            kwargs = {'timeout': 30}
+            if self.ssl_context:
+                kwargs['context'] = self.ssl_context
+            
+            with urllib.request.urlopen(req, **kwargs) as response:
                 return json.loads(response.read().decode())
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
             raise
         except urllib.error.URLError as e:
-            self.logger.error(f"Network error: {e.reason}")
+            # Better SSL error handling
+            if 'CERTIFICATE_VERIFY_FAILED' in str(e.reason):
+                self._handle_ssl_error()
+            else:
+                self.logger.error(f"Network error: {e.reason}")
             raise
+    
+    def _handle_ssl_error(self):
+        """Provide helpful SSL error message."""
+        self.logger.error("SSL Certificate Verification Failed!")
+        self.logger.info("")
+        self.logger.info("This is a common issue on macOS. Try one of these solutions:")
+        self.logger.info("")
+        self.logger.info("1. Install certificates (Recommended):")
+        self.logger.info("   /Applications/Python\\ 3.*/Install\\ Certificates.command")
+        self.logger.info("")
+        self.logger.info("2. Use Homebrew Python:")
+        self.logger.info("   brew install python3")
+        self.logger.info("")
+        self.logger.info("3. Install certifi:")
+        self.logger.info("   pip3 install --upgrade certifi")
+        self.logger.info("")
+        self.logger.info("4. Skip verification (NOT RECOMMENDED for security):")
+        self.logger.info("   pget install <app> --no-verify-ssl")
+        self.logger.info("")
     
     def _download_file(self, url, dest_path):
         """Download file from URL."""
         self.logger.debug(f"Downloading from {url}")
         
         try:
-            with urllib.request.urlopen(url, timeout=60) as response:
+            kwargs = {'timeout': 60}
+            if self.ssl_context:
+                kwargs['context'] = self.ssl_context
+            
+            with urllib.request.urlopen(url, **kwargs) as response:
                 total_size = response.getheader('Content-Length')
                 if total_size:
                     total_size = int(total_size)
@@ -60,7 +100,11 @@ class GitHubFetcher:
                 self.logger.info(f"Downloaded {dest_path.name}")
                 return dest_path
         except urllib.error.URLError as e:
-            self.logger.error(f"Download failed: {e.reason}")
+            # Better SSL error handling
+            if 'CERTIFICATE_VERIFY_FAILED' in str(e.reason):
+                self._handle_ssl_error()
+            else:
+                self.logger.error(f"Download failed: {e.reason}")
             return None
     
     def get_repo_info(self, app_name):

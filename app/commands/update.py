@@ -113,8 +113,34 @@ def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=Fa
     
     # Build from source if requested or no binary available
     logger.info("Building pget from source for self-update")
-    logger.info("Use: cd pget && python3 app/main.py install pget")
-    return False
+    
+    # Download source from GitHub (not local)
+    use_edge = edge_mode
+    version_to_download = None if edge_mode else latest_version
+    source_result = fetcher.download_app_directory('pget', edge=use_edge, version=version_to_download)
+    if not source_result or not source_result[0]:
+        logger.error("Failed to download pget source")
+        return False
+    
+    source_path, version_tag = source_result
+    
+    # Uninstall current version
+    installer.uninstall('pget')
+    
+    # Build and install from downloaded source
+    success = installer.install_with_bazel(
+        source_path=source_path,
+        app_name='pget',
+        version=latest_version if not edge_mode else 'main',
+        source_url="https://github.com/pynosaur/pget",
+        platform=platform,
+    )
+    
+    if success:
+        logger.success(f"pget updated to {latest_version if not edge_mode else 'main'}")
+        logger.info("Restart pget to use the new version")
+    
+    return success
 
 
 def run(args):
@@ -164,6 +190,12 @@ def run(args):
         logger.error("--build and --script cannot be used together")
         return False
     
+    # Check for --no-verify-ssl flag
+    no_verify_ssl = False
+    if '--no-verify-ssl' in args:
+        no_verify_ssl = True
+        args = [a for a in args if a != '--no-verify-ssl']
+    
     def _parse_names(values):
         res = []
         for a in values:
@@ -176,12 +208,12 @@ def run(args):
     names = _parse_names(args)
     if not names:
         logger = get_logger()
-        logger.error("Usage: pget update [--script|--build] [--edge] <app_name>[,app2...]")
+        logger.error("Usage: pget update [--script|--build] [--edge] [--no-verify-ssl] <app_name>[,app2...]")
         return False
     
     logger = get_logger()
     installer = Installer()
-    fetcher = GitHubFetcher()
+    fetcher = GitHubFetcher(verify_ssl=not no_verify_ssl)
     overall = True
     
     for app_name in names:
