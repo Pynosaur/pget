@@ -142,7 +142,7 @@ class GitHubFetcher:
         assets = release.get("assets", []) if release else []
         match = next((a for a in assets if a.get("name") == asset_name), None)
         if not match:
-            self.logger.error(f"Release missing required asset: {asset_name}")
+            self.logger.warning(f"Release missing required asset: {asset_name}")
             return None
 
         download_url = match.get("browser_download_url")

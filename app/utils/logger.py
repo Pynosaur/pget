@@ -21,12 +21,10 @@ class Logger:
         print(f"[OK] {message}")
     
     def error(self, message):
-        """Print error message."""
-        print(f"[ERROR] {message}", file=sys.stderr)
+        print(f"\033[31m[ERROR] {message}\033[0m", file=sys.stderr)
     
     def warning(self, message):
-        """Print warning message."""
-        print(f"[WARN] {message}")
+        print(f"\033[33m[WARN] {message}\033[0m")
     
     def debug(self, message):
         """Print debug message (only in verbose mode)."""
