@@ -7,7 +7,20 @@ on:
     branches: [ main ]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Run plack
+      run: |
+        git clone --depth 1 https://github.com/Pynosaur/plack.git /tmp/plack
+        cd /tmp/plack && python app/main.py $GITHUB_WORKSPACE
+
   test-commands:
+    needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
