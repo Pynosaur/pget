@@ -76,7 +76,9 @@ def ensure_asset_checksum(manifest: dict, asset_name: str, file_path: Path):
 
     actual = sha256_file(file_path)
     if actual != expected:
-        logger.error(f"Checksum mismatch for {asset_name}: expected {expected}, got {actual}")
+        logger.error(
+            f'Checksum mismatch for {asset_name}: expected {expected}, got {actual}',
+        )
         raise ManifestError(f"Checksum mismatch for {asset_name}")
 
     logger.debug(f"Checksum verified for {asset_name} ({actual})")

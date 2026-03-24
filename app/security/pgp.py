@@ -25,7 +25,9 @@ class PGPError(RuntimeError):
 def _require_gpg():
     gpg = shutil.which("gpg")
     if not gpg:
-        raise PGPError("gpg is required for signature verification but was not found in PATH")
+        raise PGPError(
+            'gpg is required for signature verification but was not found in PATH',
+        )
     return gpg
 
 
@@ -74,7 +76,9 @@ def verify_detached_signature(data_path: Path, signature_path: Path):
                     stderr=subprocess.DEVNULL,
                 )
             except subprocess.CalledProcessError as exc:
-                raise PGPError(f"Failed to import trusted key {key_file.name}: {exc}") from exc
+                raise PGPError(
+                    f'Failed to import trusted key {key_file.name}: {exc}',
+                ) from exc
 
         # Verify signature; capture status lines for fingerprint extraction
         proc = subprocess.run(

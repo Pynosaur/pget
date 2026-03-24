@@ -55,7 +55,7 @@ def run(args):
 
     if query:
         repos = [r for r in repos if query in r["name"].lower() or
-                 query in r.get("description", "").lower()]
+                    query in r.get("description", "").lower()]
 
     # Filter repos with .program marker
     installable_repos = []
@@ -64,7 +64,9 @@ def run(args):
             installable_repos.append(repo)
 
     if not installable_repos:
-        logger.info(f"No installable packages found{' matching ' + query if query else ''}")
+        logger.info(
+            f"No installable packages found{(' matching ' + query if query else '')}",
+        )
         return True
 
     print(f"{'Name':<20} {'Description':<60}")

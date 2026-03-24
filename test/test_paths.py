@@ -14,18 +14,18 @@ from app.utils.paths import PGET_BIN, get_binary_path, get_cache_path
 
 class TestPaths(unittest.TestCase):
     """Test cases for path utilities."""
-    
+
     def test_pget_bin(self):
         """Test PGET_BIN path."""
         expected = Path.home() / ".pget" / "bin"
         self.assertEqual(PGET_BIN, expected, "PGET_BIN should point to ~/.pget/bin")
-    
+
     def test_binary_path(self):
         """Test binary path generation."""
         path = get_binary_path("testapp")
         expected = PGET_BIN / "testapp"
         self.assertEqual(path, expected, "Binary path should be PGET_BIN/app_name")
-    
+
     def test_cache_path(self):
         """Test cache path generation (temp directory)."""
         path = get_cache_path("testapp", "testfile")

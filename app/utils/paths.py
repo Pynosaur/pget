@@ -80,7 +80,12 @@ def ensure_system_path():
             "-c",
             f'echo "{PGET_BIN}" > "{SYSTEM_PATH_FILE}"',
         ]
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         return True
     except Exception:
         # Fall back silently; per-user path will still work

@@ -63,7 +63,10 @@ def run(args):
 
     print()
     print(f"Install specific version: pget install {app_name}@<version>")
-    print(f"Example: pget install {app_name}@{releases[0].get('tag_name', '').lstrip('v')}")
+    print(
+        f"Example: pget install "
+        f"{app_name}@{releases[0].get('tag_name', '').lstrip('v')}"
+    )
 
     return True
 

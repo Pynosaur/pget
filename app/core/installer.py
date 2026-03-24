@@ -73,12 +73,17 @@ class Installer:
         module_bazel = source_path / "MODULE.bazel"
         build_file = source_path / "BUILD"
         if not module_bazel.exists() and not build_file.exists():
-            self.logger.error("Bazel build requested but MODULE.bazel/BUILD not found in source")
+            self.logger.error(
+                'Bazel build requested but MODULE.bazel/BUILD not found in source',
+            )
             return False
 
         bazel = shutil.which("bazelisk") or shutil.which("bazel")
         if not bazel:
-            self.logger.error("Bazel is required but not found. Please install Bazel (or bazelisk) and retry.")
+            self.logger.error(
+                'Bazel is required but not found. Please install Bazel (or bazelisk) '
+                'and retry.'
+            )
             return False
 
         target = f"//:{app_name}_bin"

@@ -41,11 +41,13 @@ def run(args):
     """Install one or more packages.
 
     Usage: pget install [--script|--build] [--edge] <app1>[,app2...]
-           pget install [--script|--build] [--edge] app1 app2 ...
+            pget install [--script|--build] [--edge] app1 app2 ...
     """
     if not args:
         logger = get_logger()
-        logger.error("Usage: pget install [--script|--build] [--edge] <app_name>[,app2...]")
+        logger.error(
+            'Usage: pget install [--script|--build] [--edge] <app_name>[,app2...]',
+        )
         return False
 
     # Check for --script flag (accept anywhere in args)
@@ -72,7 +74,9 @@ def run(args):
     if script_mode and build_mode:
         logger = get_logger()
         logger.error("--build and --script cannot be used together")
-        logger.info("Use --build to compile from source, or --script for Python wrapper")
+        logger.info(
+            'Use --build to compile from source, or --script for Python wrapper',
+        )
         return False
 
     # Check for --edge flag (accept anywhere in args)
@@ -93,10 +97,14 @@ def run(args):
 
     names = _parse_names(args)
     # Guard against stray flag tokens
-    names = [n for n in names if n not in ('--script', '--edge', '--build', '--no-verify-ssl')]
+    names = [n for n
+        in names if n not in ('--script', '--edge', '--build', '--no-verify-ssl')]
     if not names:
         logger = get_logger()
-        logger.error("Usage: pget install [--script|--build] [--edge] [--no-verify-ssl] <app_name>[,app2...]")
+        logger.error(
+            'Usage: pget install [--script|--build] [--edge] [--no-verify-ssl] '
+            '<app_name>[,app2...]'
+        )
         return False
 
     logger = get_logger()
@@ -109,7 +117,9 @@ def run(args):
         app_name, requested_version = app_spec if isinstance(app_spec, tuple) else (app_spec, None)
 
         if app_name in IGNORED_REPOS:
-            logger.info(f"Skipping non-installable repo '{app_name}' (marked as webpage)")
+            logger.info(
+                f"Skipping non-installable repo '{app_name}' (marked as webpage)",
+            )
             overall_success = False
             continue
 
@@ -123,7 +133,12 @@ def run(args):
             # Honor --script flag for pget self-install
             if script_mode:
                 logger.info("Installing as Python script (no compilation)")
-                success = install_as_script(source_path, app_name, PGET_VERSION, str(source_path))
+                success = install_as_script(
+                    source_path,
+                    app_name,
+                    PGET_VERSION,
+                    str(source_path),
+                )
             else:
                 # Check if Bazel is available
                 bazel = shutil.which("bazelisk") or shutil.which("bazel")
@@ -135,15 +150,26 @@ def run(args):
                         response = input("Install as script? [y/N]: ").strip().lower()
                         if response in ('y', 'yes'):
                             logger.info("Installing as Python script (no compilation)")
-                            success = install_as_script(source_path, app_name, PGET_VERSION, str(source_path))
+                            success = install_as_script(
+                                source_path,
+                                app_name,
+                                PGET_VERSION,
+                                str(source_path),
+                            )
                         else:
                             logger.error("Installation cancelled")
-                            logger.info("Install Bazel or use: python app/main.py install --script pget")
+                            logger.info(
+                                'Install Bazel or use: python app/main.py install '
+                                '--script pget'
+                            )
                             overall_success = False
                             continue
                     except (KeyboardInterrupt, EOFError):
                         logger.error("Installation cancelled")
-                        logger.info("Install Bazel or use: python app/main.py install --script pget")
+                        logger.info(
+                            'Install Bazel or use: python app/main.py install --script '
+                            'pget'
+                        )
                         overall_success = False
                         continue
                 else:
@@ -158,7 +184,9 @@ def run(args):
             overall_success = overall_success and success
             if app_name == "pget" and success:
                 ensure_path_in_shell()
-                logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
+                logger.info(
+                    "Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.",
+                )
             continue
 
         # Check if already installed and get available version
@@ -171,12 +199,19 @@ def run(args):
                 current_tag = f"v{current_version}" if not current_version.startswith('v') else current_version
 
                 if requested_tag == current_tag:
-                    logger.warning(f"{app_name} {requested_version} is already installed")
-                    logger.info("Use 'pget remove' to uninstall first if you want to reinstall")
+                    logger.warning(
+                        f'{app_name} {requested_version} is already installed',
+                    )
+                    logger.info(
+                        "Use 'pget remove' to uninstall first if you want to reinstall",
+                    )
                     overall_success = False
                     continue
                 else:
-                    logger.info(f"Replacing {app_name} {current_version} with {requested_version}")
+                    logger.info(
+                        f'Replacing {app_name} {current_version} with '
+                        f'{requested_version}'
+                    )
                     installer.uninstall(app_name)
                     # Continue with installation
             else:
@@ -192,15 +227,26 @@ def run(args):
                 if release:
                     latest_version = release.get("tag_name", "unknown")
                     if latest_version != current_version and latest_version != "unknown":
-                        logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
+                        logger.warning(
+                            f'A {type_msg} of {app_name} ({current_version}) is '
+                            f'already installed'
+                        )
                         logger.info(f"Version {latest_version} is available")
                         logger.info("Use 'pget update' to upgrade")
                     else:
-                        logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
+                        logger.warning(
+                            f'A {type_msg} of {app_name} ({current_version}) is '
+                            f'already installed'
+                        )
                 else:
-                    logger.warning(f"A {type_msg} of {app_name} ({current_version}) is already installed")
+                    logger.warning(
+                        f'A {type_msg} of {app_name} ({current_version}) is already '
+                        f'installed'
+                    )
 
-                logger.info("Use 'pget remove' to uninstall first if you want to reinstall")
+                logger.info(
+                    "Use 'pget remove' to uninstall first if you want to reinstall",
+                )
                 overall_success = False
                 continue
 
@@ -228,7 +274,9 @@ def run(args):
             req = urllib.request.Request(program_url)
             urllib.request.urlopen(req, timeout=5)
         except (urllib.error.HTTPError, urllib.error.URLError):
-            logger.error(f"'{app_name}' is not an installable program (missing .program marker)")
+            logger.error(
+                f"'{app_name}' is not an installable program (missing .program marker)",
+            )
             logger.info("This repository may be a website or documentation-only repo")
             overall_success = False
             continue
@@ -243,7 +291,11 @@ def run(args):
         # Skip binary download if --script or --build flag is set
         if not script_mode and not build_mode:
             # Try to download binary first (release asset)
-            binary_result = fetcher.download_binary(app_name, platform, version=requested_version)
+            binary_result = fetcher.download_binary(
+                app_name,
+                platform,
+                version=requested_version,
+            )
             if binary_result and binary_result[0]:
                 binary_path, version = binary_result
 
@@ -251,7 +303,11 @@ def run(args):
                 logger.debug("Downloading source for documentation")
                 # Don't use edge mode if specific version requested
                 use_edge = edge_mode and not requested_version
-                source_result = fetcher.download_app_directory(app_name, edge=use_edge, version=requested_version)
+                source_result = fetcher.download_app_directory(
+                    app_name,
+                    edge=use_edge,
+                    version=requested_version,
+                )
                 source_path = source_result[0] if source_result else None
 
                 # Install binary
@@ -273,7 +329,11 @@ def run(args):
             # Download source
             # Don't use edge mode if specific version requested
             use_edge = edge_mode and not requested_version
-            source_result = fetcher.download_app_directory(app_name, edge=use_edge, version=requested_version)
+            source_result = fetcher.download_app_directory(
+                app_name,
+                edge=use_edge,
+                version=requested_version,
+            )
             if not source_result or not source_result[0]:
                 logger.error(f"Failed to download {app_name}")
                 overall_success = False
@@ -305,20 +365,30 @@ def run(args):
                     try:
                         response = input("Install as script? [y/N]: ").strip().lower()
                         if response in ('y', 'yes'):
-                            success = install_as_script(source_path, app_name, version, source_url)
+                            success = install_as_script(
+                                source_path,
+                                app_name,
+                                version,
+                                source_url,
+                            )
                             installed_version = version
                             install_platform = "script"
                             # Add PATH for pget install if script
                             if app_name == "pget":
                                 ensure_path_in_shell()
-                                logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
+                                logger.info(
+                                    "Added ~/.pget/bin to PATH. Open a new shell to "
+                                    "use 'pget'."
+                                )
                             overall_success = overall_success and success
                             continue
                     except (KeyboardInterrupt, EOFError):
                         pass
 
                     logger.error("Installation cancelled")
-                    logger.info(f"Install Bazel or use: pget install --script {app_name}")
+                    logger.info(
+                        f'Install Bazel or use: pget install --script {app_name}',
+                    )
                     overall_success = False
                     continue
 

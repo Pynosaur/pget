@@ -6,7 +6,13 @@
 import shutil
 import stat
 from pathlib import Path
-from ..utils.paths import PGET_BIN, get_app_dir, get_doc_dir, ensure_dirs, ensure_path_in_shell
+from ..utils.paths import (
+    PGET_BIN,
+    get_app_dir,
+    get_doc_dir,
+    ensure_dirs,
+    ensure_path_in_shell,
+)
 from ..utils.logger import get_logger
 from ..utils.metadata import save_package_info
 
@@ -72,7 +78,9 @@ from app.main import main
 sys.exit(main())
 """
     wrapper_path.write_text(wrapper_content)
-    wrapper_path.chmod(wrapper_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    wrapper_path.chmod(
+        wrapper_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH,
+    )
     logger.debug(f"Created executable: {wrapper_path}")
 
     # Install documentation to helpers

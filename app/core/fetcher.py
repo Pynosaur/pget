@@ -28,7 +28,9 @@ class GitHubFetcher:
         # Create SSL context if needed
         if not verify_ssl:
             self.ssl_context = ssl._create_unverified_context()
-            self.logger.warning("SSL verification disabled - not recommended for security!")
+            self.logger.warning(
+                'SSL verification disabled - not recommended for security!',
+            )
         else:
             self.ssl_context = None
 
@@ -244,7 +246,12 @@ class GitHubFetcher:
             edge: If True, use main branch; if False, prefer latest release
             version: Specific version to download (e.g., "0.1.0")
         """
-        tar_path, version_tag = self.download_source(app_name, ref, edge=edge, version=version)
+        (tar_path, version_tag) = self.download_source(
+            app_name,
+            ref,
+            edge=edge,
+            version=version,
+        )
         if not tar_path:
             return None
 

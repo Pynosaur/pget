@@ -14,7 +14,14 @@ from ..utils.paths import get_binary_path, find_existing_binary
 from ..utils.platform import get_platform_string
 
 
-def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=False, build_mode=False):
+def update_pget_self(
+    logger,
+    installer,
+    fetcher,
+    edge_mode=False,
+    script_mode=False,
+    build_mode=False,
+):
     """Update pget itself (special handling for self-update)."""
     from ..core.script_installer import install_as_script
     from ..utils.platform import get_platform_string
@@ -26,7 +33,9 @@ def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=Fa
     # Determine latest version
     if edge_mode:
         latest_version = "main"
-        logger.info(f"Updating pget from {current_version} to latest main (--edge mode)")
+        logger.info(
+            f'Updating pget from {current_version} to latest main (--edge mode)',
+        )
     else:
         release = fetcher.get_latest_release('pget')
         if not release:
@@ -84,7 +93,12 @@ def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=Fa
 
                     # Update metadata
                     from ..utils.metadata import save_package_info
-                    save_package_info('pget', latest_version, f"https://github.com/pynosaur/pget", platform)
+                    save_package_info(
+                        'pget',
+                        latest_version,
+                        f'https://github.com/pynosaur/pget',
+                        platform,
+                    )
 
                     logger.success(f"pget updated to {latest_version}")
                     logger.info("Restart pget to use the new version")
@@ -117,7 +131,11 @@ def update_pget_self(logger, installer, fetcher, edge_mode=False, script_mode=Fa
     # Download source from GitHub (not local)
     use_edge = edge_mode
     version_to_download = None if edge_mode else latest_version
-    source_result = fetcher.download_app_directory('pget', edge=use_edge, version=version_to_download)
+    source_result = fetcher.download_app_directory(
+        'pget',
+        edge=use_edge,
+        version=version_to_download,
+    )
     if not source_result or not source_result[0]:
         logger.error("Failed to download pget source")
         return False
@@ -147,11 +165,13 @@ def run(args):
     """Update one or more packages to the latest version.
 
     Usage: pget update [--script|--build] [--edge] <app1>[,app2...]
-           pget update [--script|--build] [--edge] app1 app2 ...
+            pget update [--script|--build] [--edge] app1 app2 ...
     """
     if not args:
         logger = get_logger()
-        logger.error("Usage: pget update [--script|--build] [--edge] <app_name>[,app2...]")
+        logger.error(
+            'Usage: pget update [--script|--build] [--edge] <app_name>[,app2...]',
+        )
         return False
 
     # Check for --edge flag
@@ -208,7 +228,10 @@ def run(args):
     names = _parse_names(args)
     if not names:
         logger = get_logger()
-        logger.error("Usage: pget update [--script|--build] [--edge] [--no-verify-ssl] <app_name>[,app2...]")
+        logger.error(
+            'Usage: pget update [--script|--build] [--edge] [--no-verify-ssl] '
+            '<app_name>[,app2...]'
+        )
         return False
 
     logger = get_logger()
@@ -219,7 +242,14 @@ def run(args):
     for app_name in names:
         # Special handling for self-update
         if app_name == 'pget':
-            ok = update_pget_self(logger, installer, fetcher, edge_mode=edge_mode, script_mode=script_mode, build_mode=build_mode)
+            ok = update_pget_self(
+                logger,
+                installer,
+                fetcher,
+                edge_mode=edge_mode,
+                script_mode=script_mode,
+                build_mode=build_mode,
+            )
             overall = overall and ok
             continue
 
@@ -234,7 +264,10 @@ def run(args):
 
         # In edge mode, always force update from main without version check
         if edge_mode:
-            logger.info(f"Updating {app_name} from {current_version} to latest main (--edge mode)")
+            logger.info(
+                f'Updating {app_name} from {current_version} to latest main (--edge '
+                f'mode)'
+            )
             installer.uninstall(app_name)
 
             from .install import run as install_run
@@ -270,7 +303,11 @@ def run(args):
                     import re
                     content = doc_file.read_text()
                     logger.debug(f"Doc content length: {len(content)}")
-                    version_match = re.search(r'^VERSION:\s*"([^"]+)"', content, re.MULTILINE)
+                    version_match = re.search(
+                        '^VERSION:\\s*"([^"]+)"',
+                        content,
+                        re.MULTILINE,
+                    )
                     if version_match:
                         latest_version = version_match.group(1)
                         logger.debug(f"Found version in doc: {latest_version}")
@@ -283,7 +320,9 @@ def run(args):
             continue
 
         if current_version == latest_version:
-            logger.info(f"{app_name} is already at the latest version ({current_version})")
+            logger.info(
+                f'{app_name} is already at the latest version ({current_version})',
+            )
             continue
 
         logger.info(f"Updating {app_name} from {current_version} to {latest_version}")

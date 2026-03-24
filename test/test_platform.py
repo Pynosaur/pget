@@ -14,19 +14,19 @@ from app.utils.platform import get_os, get_arch, get_platform_string
 
 class TestPlatform(unittest.TestCase):
     """Test cases for platform detection utilities."""
-    
+
     def test_get_os(self):
         """Test OS detection."""
         os_name = get_os()
         valid_oses = ('darwin', 'linux', 'windows')
         self.assertIn(os_name, valid_oses, f"Unknown OS: {os_name}")
-    
+
     def test_get_arch(self):
         """Test architecture detection."""
         arch = get_arch()
         valid_arches = ('x86_64', 'arm64', 'i386')
         self.assertIn(arch, valid_arches, f"Unknown architecture: {arch}")
-    
+
     def test_get_platform_string(self):
         """Test platform string generation."""
         platform_str = get_platform_string()
