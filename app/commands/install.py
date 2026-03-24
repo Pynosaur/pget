@@ -114,7 +114,11 @@ def run(args):
 
     for app_spec in names:
         # Unpack app name and optional version
-        app_name, requested_version = app_spec if isinstance(app_spec, tuple) else (app_spec, None)
+        app_name, requested_version = (
+            app_spec
+            if isinstance(app_spec, tuple)
+            else (app_spec, None)
+        )
 
         if app_name in IGNORED_REPOS:
             logger.info(
@@ -123,7 +127,8 @@ def run(args):
             overall_success = False
             continue
 
-        # Special-case installing pget itself from the local repo (only if no specific version requested)
+        # Special-case installing pget itself from the local repo (only if no specific
+        # version requested)
         if app_name == "pget" and not requested_version:
             logger.info("Installing pget from local source")
             source_path = Path(__file__).resolve().parents[2]
@@ -195,8 +200,16 @@ def run(args):
 
             # Allow reinstall if specific version is requested
             if requested_version:
-                requested_tag = f"v{requested_version}" if not requested_version.startswith('v') else requested_version
-                current_tag = f"v{current_version}" if not current_version.startswith('v') else current_version
+                requested_tag = (
+                    f"v{requested_version}"
+                    if not requested_version.startswith('v')
+                    else requested_version
+                )
+                current_tag = (
+                    f"v{current_version}"
+                    if not current_version.startswith('v')
+                    else current_version
+                )
 
                 if requested_tag == current_tag:
                     logger.warning(
@@ -218,15 +231,26 @@ def run(args):
                 # No specific version requested, check for updates
                 from ..utils.metadata import get_package_info
                 pkg_info = get_package_info(app_name)
-                install_type = pkg_info.get('platform', 'unknown') if pkg_info else 'unknown'
+                install_type = (
+                    pkg_info.get('platform', 'unknown')
+                    if pkg_info
+                    else 'unknown'
+                )
 
-                type_msg = "script version" if install_type == 'script' else "binary version"
+                type_msg = (
+                    "script version"
+                    if install_type == 'script'
+                    else "binary version"
+                )
 
                 # Check for newer version
                 release = fetcher.get_latest_release(app_name)
                 if release:
                     latest_version = release.get("tag_name", "unknown")
-                    if latest_version != current_version and latest_version != "unknown":
+                    if (
+                        latest_version != current_version and
+                        latest_version != "unknown"
+                    ):
                         logger.warning(
                             f'A {type_msg} of {app_name} ({current_version}) is '
                             f'already installed'

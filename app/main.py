@@ -7,7 +7,8 @@ import sys
 import traceback
 from pathlib import Path
 
-# Allow running both as module (`python -m app.main`) and as script (`python app/main.py`)
+# Allow running both as module (`python -m app.main`) and as script (`python
+# app/main.py`)
 if __name__ == "__main__" and __package__ is None:
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     __package__ = "app"

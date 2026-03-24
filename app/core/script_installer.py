@@ -61,7 +61,16 @@ def install_as_script(source_path, app_name, version, source_url):
         """Skip bazel artifacts, git, cache, and other build artifacts."""
         ignore = []
         for f in files:
-            if f.startswith('bazel-') or f in ('.git', '__pycache__', '.pytest_cache', '.mypy_cache', 'node_modules'):
+            if (
+                f.startswith('bazel-') or
+                f in (
+                    '.git',
+                    '__pycache__',
+                    '.pytest_cache',
+                    '.mypy_cache',
+                    'node_modules',
+                )
+            ):
                 ignore.append(f)
         return ignore
 
