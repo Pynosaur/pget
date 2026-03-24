@@ -190,8 +190,14 @@ pget                 Pure Python package manager for pynosaur ecosystem
 
 Apps currently available in the pynosaur ecosystem:
 
-- **yday** - Display current day of year (1-366). Simple utility for date calculations.
-- **pget** - The package manager itself. Demonstrates self-hosting capability.
+- **pget** - Package manager for the pynosaur ecosystem
+- **see** - File viewer with slicing and highlighting
+- **purl** - Pure Python URL transfer tool
+- **yday** - Display current day of year (1-366)
+- **doc** - Documentation viewer for pynosaur CLI tools
+- **sock** - Socket communication tool
+- **path** - File and directory finder
+- **plack** - Simple Python linter
 
 To see all available apps, run:
 ```bash

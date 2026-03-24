@@ -22,7 +22,7 @@ def save_package_info(app_name, version, source_url=None, platform=None):
         'source_url': source_url,
         'platform': platform,
     }
-    
+
     try:
         # Ensure doc directory exists
         metadata_file.parent.mkdir(parents=True, exist_ok=True)
@@ -36,10 +36,10 @@ def save_package_info(app_name, version, source_url=None, platform=None):
 def get_package_info(app_name):
     """Get package installation metadata."""
     metadata_file = get_metadata_file(app_name)
-    
+
     if not metadata_file.exists():
         return None
-    
+
     try:
         with metadata_file.open('r') as f:
             return json.load(f)
@@ -57,14 +57,14 @@ def get_package_version(app_name):
         if version and version.startswith('v'):
             return version[1:]
         return version
-    
+
     # Fallback to doc file
     doc_dir = get_doc_dir(app_name)
     doc_file = doc_dir / f"{app_name}.yaml"
-    
+
     if not doc_file.exists():
         return 'unknown'
-    
+
     try:
         content = doc_file.read_text()
         # Extract VERSION from YAML doc
@@ -73,7 +73,7 @@ def get_package_version(app_name):
             return match.group(1)
     except (OSError, UnicodeDecodeError):
         pass
-    
+
     return 'unknown'
 
 

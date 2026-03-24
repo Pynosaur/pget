@@ -9,8 +9,8 @@ DESCRIPTION: >
   Self-install adds ~/.pget/bin to PATH (tries system-wide via sudo /etc/paths.d, falls back to user shell rc). Self-update is handled specially to avoid deleting the running binary. Uses Bazel+Nuitka builds when no release binary exists and the user opts to build instead of script mode.
 USAGE:
   - "pget <command> [options]"
-  - "pget install [--script] <app>[,app2...]"
-  - "pget install [--script] app1 app2 ..."
+  - "pget install [--script|--build] [--edge] <app>[,app2...]"
+  - "pget install [--script|--build] [--edge] app1 app2 ..."
   - "pget remove <app>[,app2...]"
   - "pget remove app1 app2 ..."
   - "pget update <app>[,app2...]"
@@ -18,7 +18,7 @@ USAGE:
   - "pget list"
   - "pget search [query]"
 COMMANDS:
-  - "install [--script] <app>[,app2...]   Install one or more packages (binary preferred; script if requested or build not possible)"
+  - "install [--script|--build] [--edge] <app>[,app2...]   Install one or more packages (binary preferred; script if requested or build not possible)"
   - "remove <app>[,app2...]               Remove one or more installed packages"
   - "list                                 List installed binaries and scripts"
   - "update <app>[,app2...]               Update one or more packages to latest version (handles self-update safely)"
@@ -27,7 +27,10 @@ OPTIONS:
   - "-h, --help              Show help message"
   - "-v, --version           Show version information"
   - "--verbose               Enable verbose output"
-  - "--script                Install as Python script (no Bazel required) [applies to all apps in the same command]"
+  - "--script                Install as Python script (no Bazel required)"
+  - "--build                 Force compile from source with Bazel+Nuitka"
+  - "--edge                  Install from latest main branch (not a tagged release)"
+  - "--no-verify-ssl         Skip SSL certificate verification"
 EXAMPLES:
   - "pget install yday                 # Install latest release binary if available"
   - "pget install --script see         # Force script mode (no Bazel required)"

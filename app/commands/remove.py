@@ -19,7 +19,7 @@ def _parse_names(args):
 
 def run(args):
     """Remove (uninstall) one or more packages.
-    
+
     Usage: pget remove <app1>[,app2...] | pget remove app1 app2 ...
     """
     logger = get_logger()
@@ -27,7 +27,7 @@ def run(args):
     if not names:
         logger.error("Usage: pget remove <app_name>[,app2...]")
         return False
-    
+
     installer = Installer()
     overall = True
     for name in names:

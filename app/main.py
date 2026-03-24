@@ -33,31 +33,31 @@ COMMANDS = {
 def print_help():
     """Print help message from documentation."""
     doc = read_app_doc("pget")
-    
+
     if not doc:
         print("pget - Pure Python package manager for pynosaur")
         print("Run with --help for more information")
         return
-    
+
     # Header
     print(f"{get_field(doc, 'NAME', 'pget')} - {get_field(doc, 'DESCRIPTION')}")
     print()
-    
+
     # Usage section
     _print_section("USAGE", get_list_field(doc, 'USAGE'))
-    
+
     # Commands section
     _print_section("COMMANDS", get_list_field(doc, 'COMMANDS'))
-    
+
     # Options section
     _print_section("OPTIONS", get_list_field(doc, 'OPTIONS'))
-    
+
     # Installation
     print("INSTALLATION:")
     print(f"    Packages are installed to: {PGET_BIN}")
     print(f"    Add this directory to your PATH to use installed apps")
     print()
-    
+
     # Examples section
     _print_section("EXAMPLES", get_list_field(doc, 'EXAMPLES'))
 
@@ -83,58 +83,58 @@ def print_version():
 def main():
     """Main CLI entry point."""
     args = sys.argv[1:]
-    
+
     # Handle no arguments
     if not args:
         print_help()
         return 0
-    
+
     # Handle global options
     if args[0] in ('-h', '--help', 'help'):
         print_help()
         return 0
-    
+
     if args[0] in ('--version', '-v'):
         print_version()
         return 0
-    
+
     # Check for verbose flag
     if '--verbose' in args:
         set_verbose(True)
         args = [a for a in args if a != '--verbose']
-    
+
     # Check for edge flag globally (pass through to install command)
     edge_mode = False
     if '--edge' in args:
         edge_mode = True
         args = [a for a in args if a != '--edge']
-    
+
     # Check for script flag globally (pass through to install command)
     script_mode = False
     if '--script' in args:
         script_mode = True
         args = [a for a in args if a != '--script']
-    
+
     # Check for build flag globally (pass through to install command)
     build_mode = False
     if '--build' in args:
         build_mode = True
         args = [a for a in args if a != '--build']
-    
+
     # Check for no-verify-ssl flag globally (pass through to install/update command)
     no_verify_ssl = False
     if '--no-verify-ssl' in args:
         no_verify_ssl = True
         args = [a for a in args if a != '--no-verify-ssl']
-    
+
     # Get command
     if not args:
         print_help()
         return 0
-    
+
     command = args[0]
     command_args = args[1:]
-    
+
     # Re-add command-specific flags to command_args if they were present
     if command in ('install', 'update'):
         if edge_mode:
@@ -145,7 +145,7 @@ def main():
             command_args = ['--build'] + command_args
         if no_verify_ssl:
             command_args = ['--no-verify-ssl'] + command_args
-    
+
     # Execute command
     if command in COMMANDS:
         try:

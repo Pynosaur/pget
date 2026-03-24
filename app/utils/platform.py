@@ -23,7 +23,7 @@ def get_os():
 def get_arch():
     """Get system architecture."""
     machine = platform.machine().lower()
-    
+
     # Normalize architecture names
     if machine in ("x86_64", "amd64"):
         return "x86_64"

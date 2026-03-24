@@ -11,11 +11,11 @@ from ..core.script_installer import PGET_SCRIPTS, LEGACY_SCRIPTS
 
 def run(args):
     """List installed packages.
-    
+
     Usage: pget list
     """
     logger = get_logger()
-    
+
     # Check scripts first
     scripts = set()
     for script_dir in (PGET_SCRIPTS, LEGACY_SCRIPTS):
@@ -24,7 +24,7 @@ def run(args):
                 if f.is_dir():
                     scripts.add(f.name)
     scripts = sorted(scripts)
-    
+
     # Check binaries (exclude script wrappers and backups)
     binaries = []
     if PGET_BIN.exists():
@@ -36,18 +36,18 @@ def run(args):
                 if f.name not in scripts:
                     binaries.append(f.name)
         binaries = sorted(binaries)
-    
+
     if not binaries and not scripts:
         logger.info("No packages installed")
         return True
-    
+
     if binaries:
         print(f"Installed packages in {PGET_BIN}:")
         print()
         for name in binaries:
             version = get_package_version(name)
             print(f"  {name:<20} {version}")
-    
+
     if scripts:
         if binaries:
             print()
@@ -56,5 +56,5 @@ def run(args):
         for name in scripts:
             version = get_package_version(name)
             print(f"  {name:<20} {version}  [script]")
-    
+
     return True

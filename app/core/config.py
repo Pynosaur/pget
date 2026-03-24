@@ -12,5 +12,3 @@ IGNORED_REPOS = {
     "pynosaur.github.io",
 }
 
-
-

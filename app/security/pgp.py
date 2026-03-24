@@ -115,6 +115,3 @@ def verify_detached_signature(data_path: Path, signature_path: Path):
 
         return fingerprint
 
-
-
-

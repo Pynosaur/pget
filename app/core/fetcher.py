@@ -17,31 +17,31 @@ from .config import GITHUB_API, GITHUB_RAW, PYNOSAUR_ORG
 
 class GitHubFetcher:
     """Fetches packages from GitHub pynosaur organization."""
-    
+
     def __init__(self, verify_ssl=True):
         self.logger = get_logger()
         self.org = PYNOSAUR_ORG
         self.api_base = GITHUB_API
         self.raw_base = GITHUB_RAW
         self.verify_ssl = verify_ssl
-        
+
         # Create SSL context if needed
         if not verify_ssl:
             self.ssl_context = ssl._create_unverified_context()
             self.logger.warning("SSL verification disabled - not recommended for security!")
         else:
             self.ssl_context = None
-    
+
     def _api_request(self, url):
         """Make API request to GitHub."""
         try:
             req = urllib.request.Request(url)
             req.add_header('Accept', 'application/vnd.github.v3+json')
-            
+
             kwargs = {'timeout': 30}
             if self.ssl_context:
                 kwargs['context'] = self.ssl_context
-            
+
             with urllib.request.urlopen(req, **kwargs) as response:
                 return json.loads(response.read().decode())
         except urllib.error.HTTPError as e:
@@ -55,7 +55,7 @@ class GitHubFetcher:
             else:
                 self.logger.error(f"Network error: {e.reason}")
             raise
-    
+
     def _handle_ssl_error(self):
         """Provide helpful SSL error message."""
         self.logger.error("SSL Certificate Verification Failed!")
@@ -74,29 +74,29 @@ class GitHubFetcher:
         self.logger.info("4. Skip verification (NOT RECOMMENDED for security):")
         self.logger.info("   pget install <app> --no-verify-ssl")
         self.logger.info("")
-    
+
     def _download_file(self, url, dest_path):
         """Download file from URL."""
         self.logger.debug(f"Downloading from {url}")
-        
+
         try:
             kwargs = {'timeout': 60}
             if self.ssl_context:
                 kwargs['context'] = self.ssl_context
-            
+
             with urllib.request.urlopen(url, **kwargs) as response:
                 total_size = response.getheader('Content-Length')
                 if total_size:
                     total_size = int(total_size)
                     size_mb = total_size / (1024 * 1024)
                     self.logger.info(f"Downloading {dest_path.name} ({size_mb:.1f} MB)")
-                
+
                 content = response.read()
-                
+
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
                 with dest_path.open('wb') as f:
                     f.write(content)
-                
+
                 self.logger.info(f"Downloaded {dest_path.name}")
                 return dest_path
         except urllib.error.URLError as e:
@@ -106,33 +106,33 @@ class GitHubFetcher:
             else:
                 self.logger.error(f"Download failed: {e.reason}")
             return None
-    
+
     def get_repo_info(self, app_name):
         """Get repository information."""
         url = f"{self.api_base}/repos/{self.org}/{app_name}"
         self.logger.debug(f"Fetching repo info: {url}")
         return self._api_request(url)
-    
+
     def get_latest_release(self, app_name):
         """Get latest release information."""
         url = f"{self.api_base}/repos/{self.org}/{app_name}/releases/latest"
         self.logger.debug(f"Fetching latest release: {url}")
         return self._api_request(url)
-    
+
     def get_release_by_tag(self, app_name, tag):
         """Get specific release by tag.
-        
+
         Args:
             app_name: Name of the app
             tag: Tag name (e.g., "v0.1.0" or "0.1.0")
-        
+
         Returns:
             Release info dict or None if not found
         """
         # Ensure tag has 'v' prefix
         if not tag.startswith('v'):
             tag = f"v{tag}"
-        
+
         url = f"{self.api_base}/repos/{self.org}/{app_name}/releases/tags/{tag}"
         self.logger.debug(f"Fetching release {tag}: {url}")
         return self._api_request(url)
@@ -153,15 +153,15 @@ class GitHubFetcher:
         cache_path = get_cache_path(app_name, asset_name)
         result = self._download_file(download_url, cache_path)
         return result
-    
+
     def download_binary(self, app_name, platform=None, version=None):
         """Download compiled binary for platform.
-        
+
         Args:
             app_name: Name of the app
             platform: Platform string (default: auto-detect)
             version: Specific version to download (e.g., "0.1.0"), or None for latest
-        
+
         Returns:
             Tuple of (binary_path, version) or (None, None) if not found
         """
@@ -191,10 +191,10 @@ class GitHubFetcher:
             return None, version_tag
 
         return cache_path, version_tag
-    
+
     def download_source(self, app_name, ref="main", edge=False, version=None):
         """Download source code archive.
-        
+
         Args:
             app_name: Name of the app
             ref: Git ref to download (default: main)
@@ -237,7 +237,7 @@ class GitHubFetcher:
 
     def download_app_directory(self, app_name, ref="main", edge=False, version=None):
         """Download full source tarball and extract.
-        
+
         Args:
             app_name: Name of the app
             ref: Git ref to download (default: main)
@@ -268,15 +268,15 @@ class GitHubFetcher:
             return None
 
         return children[0], version_tag
-    
+
     def _download_directory(self, api_url, dest_dir):
         """Recursively download directory contents."""
         contents = self._api_request(api_url)
         if not contents:
             return
-        
+
         dest_dir.mkdir(parents=True, exist_ok=True)
-        
+
         for item in contents:
             if item["type"] == "file":
                 file_url = item["download_url"]

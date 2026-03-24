@@ -81,6 +81,3 @@ def ensure_asset_checksum(manifest: dict, asset_name: str, file_path: Path):
 
     logger.debug(f"Checksum verified for {asset_name} ({actual})")
 
-
-
-
