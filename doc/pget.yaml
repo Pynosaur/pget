@@ -15,6 +15,7 @@ USAGE:
   - "pget remove app1 app2 ..."
   - "pget update <app>[,app2...]"
   - "pget update app1 app2 ..."
+  - "pget downgrade <app>@<version> [app2@version2 ...]"
   - "pget list"
   - "pget search [query]"
 COMMANDS:
@@ -22,6 +23,7 @@ COMMANDS:
   - "remove <app>[,app2...]               Remove one or more installed packages"
   - "list                                 List installed binaries and scripts"
   - "update <app>[,app2...]               Update one or more packages to latest version (handles self-update safely)"
+  - "downgrade <app>@<version>            Downgrade a package to a specific older version"
   - "search [query]                       Search for available packages"
 OPTIONS:
   - "-h, --help              Show help message"
@@ -38,6 +40,8 @@ EXAMPLES:
   - "pget list                         # Show installed binaries and scripts"
   - "pget search                       # List available packages"
   - "pget remove yday                  # Uninstall package"
+  - "pget downgrade pget@0.1.5         # Roll back pget to 0.1.5"
+  - "pget versions pget                # List all available pget releases"
 OUTPUT: >
   Command execution status and results. Exit code 0 on success; non-zero on errors (missing package, network failure, build failure, etc.).
 AUTHOR: "@spacemany2k38"

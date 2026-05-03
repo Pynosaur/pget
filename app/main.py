@@ -13,7 +13,7 @@ if __name__ == "__main__" and __package__ is None:
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     __package__ = "app"
 
-from app.commands import install, remove, update, search, versions
+from app.commands import install, remove, update, search, versions, downgrade
 from app.commands import list as list_cmd
 from app.utils.logger import get_logger, set_verbose
 from app.utils.paths import PGET_BIN
@@ -26,6 +26,7 @@ COMMANDS = {
     'remove': remove.run,
     'list': list_cmd.run,
     'update': update.run,
+    'downgrade': downgrade.run,
     'search': search.run,
     'versions': versions.run,
 }
@@ -137,7 +138,7 @@ def main():
     command_args = args[1:]
 
     # Re-add command-specific flags to command_args if they were present
-    if command in ('install', 'update'):
+    if command in ('install', 'update', 'downgrade'):
         if edge_mode:
             command_args = ['--edge'] + command_args
         if script_mode:
