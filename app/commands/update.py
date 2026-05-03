@@ -14,6 +14,14 @@ from ..utils.paths import get_binary_path, find_existing_binary
 from ..utils.platform import get_platform_string
 
 
+def _version_tuple(v):
+    """Parse a version string into a comparable tuple, e.g. '0.1.6' -> (0, 1, 6)."""
+    try:
+        return tuple(int(x) for x in str(v).lstrip('v').split('.'))
+    except (ValueError, AttributeError):
+        return (0,)
+
+
 def update_pget_self(
     logger,
     installer,
@@ -27,8 +35,15 @@ def update_pget_self(
     from ..utils.platform import get_platform_string
     from pathlib import Path
 
+    from ..utils.metadata import get_package_info
+
     current_version = installer.get_installed_version('pget')
     current_binary = find_existing_binary('pget') or get_binary_path('pget')
+
+    # If pget was installed as a script, always use script mode for self-update
+    pkg_info = get_package_info('pget')
+    if not script_mode and pkg_info and pkg_info.get('platform') == 'script':
+        script_mode = True
 
     # Determine latest version
     if edge_mode:
@@ -46,7 +61,7 @@ def update_pget_self(
 
         latest_version = release.get("tag_name", "").lstrip('v')
 
-        if current_version == latest_version and not edge_mode:
+        if _version_tuple(latest_version) <= _version_tuple(current_version):
             logger.info(f"pget is already at the latest version ({current_version})")
             return True
 
@@ -320,7 +335,7 @@ def run(args):
             overall = False
             continue
 
-        if current_version == latest_version:
+        if _version_tuple(latest_version) <= _version_tuple(current_version):
             logger.info(
                 f'{app_name} is already at the latest version ({current_version})',
             )
