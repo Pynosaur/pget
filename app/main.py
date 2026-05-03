@@ -151,6 +151,8 @@ def main():
     # Execute command
     if command in COMMANDS:
         try:
+            logger = get_logger()
+            logger.set_command(command)
             success = COMMANDS[command](command_args)
             return 0 if success else 1
         except KeyboardInterrupt:
@@ -165,6 +167,7 @@ def main():
             return 1
     else:
         logger = get_logger()
+        logger.set_command(command)
         logger.error(f"Unknown command: {command}")
         logger.info(f"Did you mean: pget install {command}?")
         return 1
