@@ -374,14 +374,14 @@ def run(args):
                             "No release binary found; building with Bazel+Nuitka"
                         )
                     success = installer.install_with_bazel(
-                    source_path=source_path,
-                    app_name=app_name,
-                    version=version,
-                    source_url=source_url,
-                    platform=platform,
-                )
-                installed_version = version
-                install_platform = platform
+                        source_path=source_path,
+                        app_name=app_name,
+                        version=version,
+                        source_url=source_url,
+                        platform=platform,
+                    )
+                    installed_version = version
+                    install_platform = platform
 
         # Add PATH for pget install
         if app_name == "pget" and success:
