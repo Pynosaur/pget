@@ -34,14 +34,14 @@ OPTIONS:
   - "--edge                  Install from latest main branch (not a tagged release)"
   - "--no-verify-ssl         Skip SSL certificate verification"
 EXAMPLES:
-  - "pget install yday                 # Install latest release binary if available"
-  - "pget install --script see         # Force script mode (no Bazel required)"
-  - "pget update pget                  # Self-update with safety swap"
-  - "pget list                         # Show installed binaries and scripts"
-  - "pget search                       # List available packages"
-  - "pget remove yday                  # Uninstall package"
-  - "pget downgrade pget@0.1.5         # Roll back pget to 0.1.5"
-  - "pget versions pget                # List all available pget releases"
+  - "pget install yday              # Install latest release binary"
+  - "pget install --script see      # Force script mode (no Bazel required)"
+  - "pget update pget               # Self-update with safety swap"
+  - "pget list                      # Show installed binaries and scripts"
+  - "pget search                    # List available packages"
+  - "pget remove yday               # Uninstall package"
+  - "pget downgrade pget@0.1.5      # Roll back pget to 0.1.5"
+  - "pget versions pget             # List all available pget releases"
 OUTPUT: >
   Command execution status and results. Exit code 0 on success; non-zero on errors (missing package, network failure, build failure, etc.).
 AUTHOR: "@spacemany2k38"
