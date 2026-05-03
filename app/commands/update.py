@@ -90,6 +90,7 @@ def update_pget_self(
 
                     shutil.copy(new_binary_path, current_binary)
                     current_binary.chmod(0o755)
+                    installer._sanitize_binary(current_binary)
 
                     # Update metadata
                     from ..utils.metadata import save_package_info

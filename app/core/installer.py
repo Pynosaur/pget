@@ -3,6 +3,7 @@
 # Author: @spacemany2k38
 # 2025-12-24
 
+import platform
 import shutil
 import stat
 import subprocess
@@ -49,6 +50,24 @@ class Installer:
         shutil.copytree(doc_source, doc_dest)
         self.logger.debug(f"Installed documentation for {app_name}")
 
+    def _sanitize_binary(self, binary_path):
+        """Clear quarantine attributes and ad-hoc codesign on macOS.
+        Prevents Gatekeeper from killing unsigned downloaded binaries."""
+        if platform.system() != "Darwin":
+            return
+        try:
+            subprocess.run(
+                ["xattr", "-cr", str(binary_path)],
+                capture_output=True, check=False,
+            )
+            subprocess.run(
+                ["codesign", "--force", "--sign", "-", str(binary_path)],
+                capture_output=True, check=False,
+            )
+            self.logger.debug(f"Signed {binary_path.name} for macOS")
+        except FileNotFoundError:
+            pass
+
     def install_binary(self, binary_path, app_name, version, source_url, platform):
         """Install binary to ~/.pget/bin."""
         dest = get_binary_path(app_name)
@@ -60,6 +79,8 @@ class Installer:
 
         # Make executable
         dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+        self._sanitize_binary(dest)
 
         # Save metadata
         save_package_info(app_name, version, source_url, platform)
@@ -120,6 +141,8 @@ class Installer:
         self.logger.progress(f"Installing {app_name} to {dest}")
         shutil.copy(built_path, dest)
         dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+        self._sanitize_binary(dest)
 
         # Install documentation
         self.install_doc_files(source_path, app_name)
