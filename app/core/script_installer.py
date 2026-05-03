@@ -54,6 +54,17 @@ def install_as_script(source_path, app_name, version, source_url):
 
     # Copy entire source to script directory (skip bazel artifacts and cache)
     script_dir = PGET_SCRIPTS / app_name
+
+    # If source and destination are the same path (e.g. pget self-update from a script
+    # install), make a temp copy first so rmtree doesn't delete the source.
+    import tempfile as _tempfile
+    _temp_dir = None
+    if source_path.resolve() == script_dir.resolve():
+        _temp_dir = Path(_tempfile.mkdtemp())
+        _temp_source = _temp_dir / app_name
+        shutil.copytree(source_path, _temp_source, symlinks=False)
+        source_path = _temp_source
+
     if script_dir.exists():
         shutil.rmtree(script_dir)
 
@@ -75,6 +86,9 @@ def install_as_script(source_path, app_name, version, source_url):
         return ignore
 
     shutil.copytree(source_path, script_dir, ignore=ignore_patterns, symlinks=False)
+    if _temp_dir and _temp_dir.exists():
+        shutil.rmtree(_temp_dir, ignore_errors=True)
+        source_path = script_dir  # point to installed copy for doc install below
     logger.debug(f"Copied source to {script_dir}")
 
     # Create executable wrapper in bin

@@ -51,31 +51,13 @@ class GitHubFetcher:
                 return None
             raise
         except urllib.error.URLError as e:
-            # Better SSL error handling
             if 'CERTIFICATE_VERIFY_FAILED' in str(e.reason):
-                self._handle_ssl_error()
+                self.logger.error(
+                    "SSL certificate error — run: pip3 install --upgrade certifi"
+                )
             else:
                 self.logger.error(f"Network error: {e.reason}")
-            raise
-
-    def _handle_ssl_error(self):
-        """Provide helpful SSL error message."""
-        self.logger.error("SSL Certificate Verification Failed!")
-        self.logger.info("")
-        self.logger.info("This is a common issue on macOS. Try one of these solutions:")
-        self.logger.info("")
-        self.logger.info("1. Install certificates (Recommended):")
-        self.logger.info("   /Applications/Python\\ 3.*/Install\\ Certificates.command")
-        self.logger.info("")
-        self.logger.info("2. Use Homebrew Python:")
-        self.logger.info("   brew install python3")
-        self.logger.info("")
-        self.logger.info("3. Install certifi:")
-        self.logger.info("   pip3 install --upgrade certifi")
-        self.logger.info("")
-        self.logger.info("4. Skip verification (NOT RECOMMENDED for security):")
-        self.logger.info("   pget install <app> --no-verify-ssl")
-        self.logger.info("")
+            return None
 
     def _download_file(self, url, dest_path):
         """Download file from URL."""
@@ -102,9 +84,10 @@ class GitHubFetcher:
                 self.logger.info(f"Downloaded {dest_path.name}")
                 return dest_path
         except urllib.error.URLError as e:
-            # Better SSL error handling
             if 'CERTIFICATE_VERIFY_FAILED' in str(e.reason):
-                self._handle_ssl_error()
+                self.logger.error(
+                    "SSL certificate error — run: pip3 install --upgrade certifi"
+                )
             else:
                 self.logger.error(f"Download failed: {e.reason}")
             return None

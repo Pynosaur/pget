@@ -145,45 +145,24 @@ def run(args):
                     str(source_path),
                 )
             else:
-                # Check if Bazel is available
                 bazel = shutil.which("bazelisk") or shutil.which("bazel")
-                if not bazel:
-                    logger.error("Bazel required for building pget binary")
-                    logger.info("Bazel not found. Install as script instead?")
-
-                    try:
-                        response = input("Install as script? [y/N]: ").strip().lower()
-                        if response in ('y', 'yes'):
-                            logger.info("Installing as Python script (no compilation)")
-                            success = install_as_script(
-                                source_path,
-                                app_name,
-                                PGET_VERSION,
-                                str(source_path),
-                            )
-                        else:
-                            logger.error("Installation cancelled")
-                            logger.info(
-                                'Install Bazel or use: python app/main.py install '
-                                '--script pget'
-                            )
-                            overall_success = False
-                            continue
-                    except (KeyboardInterrupt, EOFError):
-                        logger.error("Installation cancelled")
-                        logger.info(
-                            'Install Bazel or use: python app/main.py install --script '
-                            'pget'
-                        )
-                        overall_success = False
-                        continue
-                else:
+                module_bazel = source_path / "MODULE.bazel"
+                build_file = source_path / "BUILD"
+                if bazel and (module_bazel.exists() or build_file.exists()):
                     success = installer.install_with_bazel(
                         source_path=source_path,
                         app_name=app_name,
                         version=PGET_VERSION,
                         source_url=str(source_path),
                         platform=platform,
+                    )
+                else:
+                    logger.info("Installing as Python script (no compilation)")
+                    success = install_as_script(
+                        source_path,
+                        app_name,
+                        PGET_VERSION,
+                        str(source_path),
                     )
 
             overall_success = overall_success and success
@@ -251,26 +230,19 @@ def run(args):
                         latest_version != current_version and
                         latest_version != "unknown"
                     ):
-                        logger.warning(
-                            f'A {type_msg} of {app_name} ({current_version}) is '
-                            f'already installed'
+                        logger.info(
+                            f"{app_name} is already installed ({current_version}) "
+                            f"\u2014 {latest_version} is available, run "
+                            f"'pget update {app_name}'"
                         )
-                        logger.info(f"Version {latest_version} is available")
-                        logger.info("Use 'pget update' to upgrade")
                     else:
-                        logger.warning(
-                            f'A {type_msg} of {app_name} ({current_version}) is '
-                            f'already installed'
+                        logger.info(
+                            f"{app_name} is already installed ({current_version})"
                         )
                 else:
-                    logger.warning(
-                        f'A {type_msg} of {app_name} ({current_version}) is already '
-                        f'installed'
+                    logger.info(
+                        f"{app_name} is already installed ({current_version})"
                     )
-
-                logger.info(
-                    "Use 'pget remove' to uninstall first if you want to reinstall",
-                )
                 overall_success = False
                 continue
 
@@ -382,46 +354,26 @@ def run(args):
                         overall_success = False
                         continue
 
-                    logger.error("No release binary found; Bazel required for building")
-                    logger.info("Bazel not found. Install as script instead?")
-
-                    # Prompt user
-                    try:
-                        response = input("Install as script? [y/N]: ").strip().lower()
-                        if response in ('y', 'yes'):
-                            success = install_as_script(
-                                source_path,
-                                app_name,
-                                version,
-                                source_url,
-                            )
-                            installed_version = version
-                            install_platform = "script"
-                            # Add PATH for pget install if script
-                            if app_name == "pget":
-                                ensure_path_in_shell()
-                                logger.info(
-                                    "Added ~/.pget/bin to PATH. Open a new shell to "
-                                    "use 'pget'."
-                                )
-                            overall_success = overall_success and success
-                            continue
-                    except (KeyboardInterrupt, EOFError):
-                        pass
-
-                    logger.error("Installation cancelled")
-                    logger.info(
-                        f'Install Bazel or use: pget install --script {app_name}',
+                    logger.info("No binary available; installing as Python script")
+                    success = install_as_script(
+                        source_path,
+                        app_name,
+                        version,
+                        source_url,
                     )
-                    overall_success = False
-                    continue
-
-                # Build with Bazel
-                if build_mode:
-                    logger.info("Building from source with Bazel+Nuitka (--build mode)")
+                    installed_version = version
+                    install_platform = "script"
                 else:
-                    logger.info("No release binary found; building with Bazel+Nuitka")
-                success = installer.install_with_bazel(
+                    # Build with Bazel
+                    if build_mode:
+                        logger.info(
+                            "Building from source with Bazel+Nuitka (--build mode)"
+                        )
+                    else:
+                        logger.info(
+                            "No release binary found; building with Bazel+Nuitka"
+                        )
+                    success = installer.install_with_bazel(
                     source_path=source_path,
                     app_name=app_name,
                     version=version,
