@@ -3,6 +3,11 @@
 # Author: @spacemany2k38
 # 2026-05-02
 
+import json
+import urllib.request
+import urllib.error
+
+from ..core.config import PYNOSAUR_ORG, GITHUB_API
 from ..core.fetcher import GitHubFetcher
 from ..core.installer import Installer
 from ..utils.logger import get_logger
@@ -14,6 +19,54 @@ def _version_tuple(v):
         return tuple(int(x) for x in str(v).lstrip('v').split('.'))
     except (ValueError, AttributeError):
         return (0,)
+
+
+def _list_older_versions(app_name, current_version):
+    """Fetch and display versions older than the current installed version."""
+    logger = get_logger()
+    url = f"{GITHUB_API}/repos/{PYNOSAUR_ORG}/{app_name}/releases?per_page=100"
+
+    try:
+        req = urllib.request.Request(url)
+        req.add_header('Accept', 'application/vnd.github.v3+json')
+        with urllib.request.urlopen(req, timeout=30) as response:
+            releases = json.loads(response.read().decode())
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            logger.error(f"Package '{app_name}' not found")
+        else:
+            logger.error(f"Failed to fetch releases: {e}")
+        return False
+    except urllib.error.URLError as e:
+        logger.error(f"Network error: {e.reason}")
+        return False
+
+    current = _version_tuple(current_version)
+    older = [
+        r for r in releases
+        if _version_tuple(r.get("tag_name", "")) < current
+    ]
+
+    if not older:
+        logger.info(
+            f"No older versions available for {app_name} "
+            f"(current: {current_version})"
+        )
+        return True
+
+    print(f"Installed version of {app_name}: {current_version}")
+    print(f"Available older versions:")
+    print()
+    for release in older:
+        tag = release.get("tag_name", "")
+        published = release.get("published_at", "")[:10]
+        name = release.get("name", "")
+        print(f"  {tag:<15} {published}  {name}")
+    print()
+    print(f"Downgrade: pget downgrade {app_name}@<version>")
+    example_tag = older[0].get("tag_name", "").lstrip("v")
+    print(f"Example:   pget downgrade {app_name}@{example_tag}")
+    return True
 
 
 def run(args):
@@ -52,12 +105,14 @@ def run(args):
             targets.append((part, args[i + 1].strip()))
             i += 1
         else:
+            # No version specified — show available older versions
             logger = get_logger()
-            logger.error(
-                f"No version specified for '{part}'. "
-                "Use: pget downgrade <app>@<version>"
-            )
-            return False
+            installer = Installer()
+            if not installer.is_installed(part):
+                logger.error(f"{part} is not installed")
+                return False
+            current_version = installer.get_installed_version(part)
+            return _list_older_versions(part, current_version)
         i += 1
 
     if not targets:
