@@ -12,6 +12,7 @@ from ..utils.paths import (
     get_doc_dir,
     ensure_dirs,
     ensure_path_in_shell,
+    link_to_system_bin,
 )
 from ..utils.logger import get_logger
 from ..utils.metadata import save_package_info
@@ -123,6 +124,7 @@ sys.exit(main())
     logger.success(f"{app_name} installed successfully (script mode)")
     logger.info(f"Source: {script_dir}")
     ensure_path_in_shell()
+    link_to_system_bin(app_name)
 
     return True
 

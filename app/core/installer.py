@@ -16,6 +16,8 @@ from ..utils.paths import (
     get_temp_cache_dir,
     ensure_dirs,
     ensure_path_in_shell,
+    link_to_system_bin,
+    unlink_from_system_bin,
 )
 from ..core.script_installer import PGET_SCRIPTS, uninstall_script
 from ..utils.logger import get_logger
@@ -87,6 +89,7 @@ class Installer:
 
         self.logger.success(f"{app_name} installed successfully")
         ensure_path_in_shell()
+        link_to_system_bin(app_name)
         return True
 
     def install_with_bazel(self, source_path, app_name, version, source_url, platform):
@@ -152,6 +155,7 @@ class Installer:
 
         self.logger.success(f"{app_name} installed successfully (bazel build)")
         ensure_path_in_shell()
+        link_to_system_bin(app_name)
         return True
 
     def uninstall(self, app_name):
@@ -163,6 +167,7 @@ class Installer:
 
         self.logger.progress(f"Uninstalling {app_name}")
         binary.unlink()
+        unlink_from_system_bin(app_name)
 
         # Remove entire helper directory (doc, data, config, cache, metadata)
         app_dir = get_app_dir(app_name)

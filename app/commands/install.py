@@ -13,7 +13,7 @@ from ..core.installer import Installer
 from ..core.script_installer import install_as_script
 from ..utils.platform import get_platform_string
 from ..utils.logger import get_logger
-from ..utils.paths import ensure_path_in_shell
+from ..utils.paths import ensure_path_in_shell, ensure_system_path, link_to_system_bin
 from .. import __version__ as PGET_VERSION
 
 
@@ -168,9 +168,13 @@ def run(args):
             overall_success = overall_success and success
             if app_name == "pget" and success:
                 ensure_path_in_shell()
-                logger.info(
-                    "Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.",
-                )
+                ensure_system_path()
+                if link_to_system_bin(app_name):
+                    logger.info(f"Linked pget to /usr/local/bin (available now).")
+                else:
+                    logger.info(
+                        "Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.",
+                    )
             continue
 
         # Check if already installed and get available version
@@ -386,7 +390,11 @@ def run(args):
         # Add PATH for pget install
         if app_name == "pget" and success:
             ensure_path_in_shell()
-            logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
+            ensure_system_path()
+            if link_to_system_bin(app_name):
+                logger.info(f"Linked pget to /usr/local/bin (available now).")
+            else:
+                logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
 
         overall_success = overall_success and success
 

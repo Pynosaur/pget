@@ -4,6 +4,7 @@
 # 2025-12-24
 
 import os
+import platform as _platform
 import tempfile
 from pathlib import Path
 
@@ -13,6 +14,7 @@ PGET_BIN = PGET_ROOT / "bin"
 PGET_HELPERS = PGET_ROOT / "helpers"
 PGET_PATH_LINE = 'export PATH="$HOME/.pget/bin:$PATH"'
 SYSTEM_PATH_FILE = Path("/etc/paths.d/pget")
+LINUX_PROFILE_FILE = Path("/etc/profile.d/pget.sh")
 # Preferred system bin for sudo installs (POSIX). None if not applicable.
 SYSTEM_BIN = Path("/usr/local/bin") if os.name != "nt" else None
 
@@ -48,22 +50,27 @@ def ensure_path_in_shell():
 
 
 def ensure_system_path():
-    """Attempt to add ~/.pget/bin to system PATH via /etc/paths.d (may require sudo).
+    """Attempt to add ~/.pget/bin to system PATH via OS-appropriate mechanism.
 
-    Tries to write /etc/paths.d/pget so shells pick up the path automatically.
+    macOS: writes /etc/paths.d/pget
+    Linux: writes /etc/profile.d/pget.sh
     Falls back to per-user shell RC if not permitted.
     """
-    # If already exists, do nothing
+    if _platform.system() == "Darwin":
+        return _ensure_system_path_macos()
+    return _ensure_system_path_linux()
+
+
+def _ensure_system_path_macos():
+    """Add PATH via /etc/paths.d (macOS only)."""
     try:
         if SYSTEM_PATH_FILE.exists():
             existing = SYSTEM_PATH_FILE.read_text().strip()
             if str(PGET_BIN) in existing:
                 return True
     except OSError:
-        # Ignore and fall back
         return False
 
-    # If running as root, write directly
     try:
         if hasattr(os, "geteuid") and os.geteuid() == 0:
             SYSTEM_PATH_FILE.write_text(str(PGET_BIN))
@@ -71,24 +78,75 @@ def ensure_system_path():
     except Exception:
         return False
 
-    # Try writing with elevated privileges (will prompt for password if required)
+    return False
+
+
+def _ensure_system_path_linux():
+    """Add PATH via /etc/profile.d (Linux)."""
     try:
-        import subprocess
-        cmd = [
-            "sudo",
-            "sh",
-            "-c",
-            f'echo "{PGET_BIN}" > "{SYSTEM_PATH_FILE}"',
-        ]
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        return True
+        if LINUX_PROFILE_FILE.exists():
+            existing = LINUX_PROFILE_FILE.read_text()
+            if PGET_PATH_LINE in existing:
+                return True
+    except OSError:
+        return False
+
+    try:
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            LINUX_PROFILE_FILE.write_text(PGET_PATH_LINE + "\n")
+            return True
     except Exception:
-        # Fall back silently; per-user path will still work
+        return False
+
+    return False
+
+
+def link_to_system_bin(app_name):
+    """Symlink installed binary into /usr/local/bin for immediate PATH access.
+
+    Returns True if symlink was created, False otherwise.
+    """
+    if SYSTEM_BIN is None:
+        return False
+
+    source = PGET_BIN / app_name
+    if not source.exists():
+        return False
+
+    dest = SYSTEM_BIN / app_name
+    try:
+        # Remove existing symlink/file if it points to our binary
+        if dest.is_symlink():
+            if dest.resolve() == source.resolve():
+                return True
+            dest.unlink()
+        elif dest.exists():
+            # Don't overwrite non-symlink files we didn't create
+            return False
+
+        dest.symlink_to(source)
+        return True
+    except OSError:
+        return False
+
+
+def unlink_from_system_bin(app_name):
+    """Remove symlink from /usr/local/bin if it points to our binary.
+
+    Returns True if removed or didn't exist, False on error.
+    """
+    if SYSTEM_BIN is None:
+        return True
+
+    dest = SYSTEM_BIN / app_name
+    source = PGET_BIN / app_name
+    try:
+        if dest.is_symlink():
+            # Only remove if it points to our binary
+            if dest.resolve() == source.resolve() or not source.exists():
+                dest.unlink()
+        return True
+    except OSError:
         return False
 
 

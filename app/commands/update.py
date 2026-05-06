@@ -67,16 +67,38 @@ def update_pget_self(
 
         logger.info(f"Updating pget from {current_version} to {latest_version}")
 
-    # For script mode, use uninstall+reinstall (wrapper not locked)
+    # For script mode, download source FIRST, then uninstall, then install from
+    # the downloaded source. We can't use install_run because it resolves source
+    # from __file__ which points to the (about to be deleted) script directory.
     if script_mode or not current_binary.exists():
+        # Download new source before uninstalling
+        version_to_download = None if edge_mode else latest_version
+        source_result = fetcher.download_app_directory(
+            'pget',
+            edge=edge_mode,
+            version=version_to_download,
+        )
+        if not source_result or not source_result[0]:
+            logger.error("Failed to download pget source for update")
+            return False
+
+        source_path, _ = source_result
+
+        # Now safe to uninstall
         installer.uninstall('pget')
-        from .install import run as install_run
-        install_args = ['--script'] if script_mode else []
-        if edge_mode:
-            install_args.append('--edge')
-        install_args.append('pget')
-        ok = install_run(install_args)
+
+        # Install from downloaded source
+        ok = install_as_script(
+            source_path,
+            'pget',
+            latest_version if not edge_mode else 'main',
+            'https://github.com/pynosaur/pget',
+        )
         if ok:
+            from ..utils.paths import ensure_path_in_shell, ensure_system_path, link_to_system_bin
+            ensure_path_in_shell()
+            ensure_system_path()
+            link_to_system_bin('pget')
             logger.info("Restart pget to use the new version")
         return ok
 
