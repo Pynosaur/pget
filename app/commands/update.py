@@ -95,7 +95,10 @@ def update_pget_self(
             'https://github.com/pynosaur/pget',
         )
         if ok:
-            from ..utils.paths import ensure_path_in_shell, ensure_system_path, link_to_system_bin
+            from ..utils.paths import (
+                ensure_path_in_shell, ensure_system_path,
+                link_to_system_bin,
+            )
             ensure_path_in_shell()
             ensure_system_path()
             link_to_system_bin('pget')
@@ -199,48 +202,68 @@ def update_pget_self(
     return success
 
 
+def _get_installed_names():
+    """Return sorted list of all installed package names."""
+    from ..utils.paths import PGET_BIN
+    from ..core.script_installer import PGET_SCRIPTS, LEGACY_SCRIPTS
+
+    names = set()
+    for script_dir in (PGET_SCRIPTS, LEGACY_SCRIPTS):
+        if script_dir.exists():
+            for f in script_dir.iterdir():
+                if f.is_dir():
+                    names.add(f.name)
+    if PGET_BIN.exists():
+        for f in PGET_BIN.iterdir():
+            if f.is_file() and not f.name.startswith('.'):
+                if not f.name.endswith(('.old', '.bak')):
+                    names.add(f.name)
+    result = sorted(names)
+    if 'pget' in result:
+        result.remove('pget')
+        result.append('pget')
+    return result
+
+
 def run(args):
     """Update one or more packages to the latest version.
 
     Usage: pget update [--script|--build] [--edge] <app1>[,app2...]
             pget update [--script|--build] [--edge] app1 app2 ...
+            pget update --all
+            pget update -a
     """
     if not args:
         logger = get_logger()
         logger.error(
-            'Usage: pget update [--script|--build] [--edge] <app_name>[,app2...]',
+            'Usage: pget update [--all|-a] [--script|--build] [--edge] '
+            '<app_name>[,app2...]',
         )
         return False
+
+    # Check for --all / -a flag
+    all_mode = False
+    if '--all' in args or '-a' in args:
+        all_mode = True
+        args = [a for a in args if a not in ('--all', '-a')]
 
     # Check for --edge flag
     edge_mode = False
     if '--edge' in args:
         edge_mode = True
         args = [a for a in args if a != '--edge']
-        if not args:
-            logger = get_logger()
-            logger.error("Usage: pget update --edge <app_name>[,app2...]")
-            return False
 
     # Check for --script flag
     script_mode = False
     if '--script' in args:
         script_mode = True
         args = [a for a in args if a != '--script']
-        if not args:
-            logger = get_logger()
-            logger.error("Usage: pget update --script <app_name>[,app2...]")
-            return False
 
     # Check for --build flag
     build_mode = False
     if '--build' in args:
         build_mode = True
         args = [a for a in args if a != '--build']
-        if not args:
-            logger = get_logger()
-            logger.error("Usage: pget update --build <app_name>[,app2...]")
-            return False
 
     # --build and --script are mutually exclusive
     if script_mode and build_mode:
@@ -263,16 +286,22 @@ def run(args):
                     res.append(part)
         return res
 
-    names = _parse_names(args)
-    if not names:
-        logger = get_logger()
-        logger.error(
-            'Usage: pget update [--script|--build] [--edge] [--no-verify-ssl] '
-            '<app_name>[,app2...]'
-        )
-        return False
-
     logger = get_logger()
+
+    if all_mode:
+        names = _get_installed_names()
+        if not names:
+            logger.info("No packages installed")
+            return True
+    else:
+        names = _parse_names(args)
+        if not names:
+            logger.error(
+                'Usage: pget update [--all|-a] [--script|--build] [--edge] '
+                '[--no-verify-ssl] <app_name>[,app2...]'
+            )
+            return False
+
     installer = Installer()
     fetcher = GitHubFetcher(verify_ssl=not no_verify_ssl)
     overall = True

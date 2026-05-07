@@ -1,5 +1,5 @@
 NAME: pget
-VERSION: "0.2.0"
+VERSION: "0.2.1"
 DESCRIPTION: >
   Pure Python package manager for the Pynosaur ecosystem. Installs, updates, lists, and removes Pynosaur CLI tools. Supports two installation modes:
 
@@ -13,8 +13,9 @@ USAGE:
   - "pget install [--script|--build] [--edge] app1 app2 ..."
   - "pget remove <app>[,app2...]"
   - "pget remove app1 app2 ..."
-  - "pget update <app>[,app2...]"
-  - "pget update app1 app2 ..."
+  - "pget update [--all|-a] <app>[,app2...]"
+  - "pget update --all"
+  - "pget update -a"
   - "pget downgrade <app>@<version> [app2@version2 ...]"
   - "pget list"
   - "pget search [query]"
@@ -22,7 +23,7 @@ COMMANDS:
   - "install [--script|--build] [--edge] <app>[,app2...]   Install one or more packages (binary preferred; script if requested or build not possible)"
   - "remove <app>[,app2...]               Remove one or more installed packages"
   - "list                                 List installed binaries and scripts"
-  - "update <app>[,app2...]               Update one or more packages to latest version (handles self-update safely)"
+  - "update [--all|-a] <app>[,app2...]    Update packages to latest version (--all/-a updates everything installed)"
   - "downgrade <app>@<version>            Downgrade a package to a specific older version"
   - "search [query]                       Search for available packages"
 OPTIONS:
@@ -32,10 +33,13 @@ OPTIONS:
   - "--script                Install as Python script (no Bazel required)"
   - "--build                 Force compile from source with Bazel+Nuitka"
   - "--edge                  Install from latest main branch (not a tagged release)"
+  - "--all, -a               Update all installed packages (for update command)"
   - "--no-verify-ssl         Skip SSL certificate verification"
 EXAMPLES:
   - "pget install yday              # Install latest release binary"
   - "pget install --script see      # Force script mode (no Bazel required)"
+  - "pget update --all              # Update all installed packages"
+  - "pget update -a                 # Same as --all"
   - "pget update pget               # Self-update with safety swap"
   - "pget list                      # Show installed binaries and scripts"
   - "pget search                    # List available packages"
