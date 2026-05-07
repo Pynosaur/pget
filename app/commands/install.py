@@ -394,7 +394,10 @@ def run(args):
             if link_to_system_bin(app_name):
                 logger.info(f"Linked pget to /usr/local/bin (available now).")
             else:
-                logger.info("Added ~/.pget/bin to PATH. Open a new shell to use 'pget'.")
+                logger.info(
+                    "Added ~/.pget/bin to PATH. "
+                    "Open a new shell to use 'pget'.",
+                )
 
         overall_success = overall_success and success
 

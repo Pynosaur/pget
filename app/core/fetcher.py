@@ -153,8 +153,6 @@ class GitHubFetcher:
         if platform is None:
             platform = get_platform_string()
 
-        self.logger.progress(f"Looking for binary: {app_name}-{platform}")
-
         # Get specific or latest release
         if version:
             release = self.get_release_by_tag(app_name, version)
@@ -168,9 +166,23 @@ class GitHubFetcher:
                 return None, None
 
         version_tag = release.get("tag_name", "unknown")
-        binary_name = f"{app_name}-{platform}"
-
-        cache_path = self._download_release_asset(app_name, release, binary_name)
+        version_clean = str(version_tag).lstrip('v')
+        self.logger.progress(
+            f"Looking for binary: {app_name}-{version_clean}-{platform} "
+            f"(or legacy {app_name}-{platform})",
+        )
+        # Versioned asset first, then legacy name-platform only
+        candidates = [
+            f"{app_name}-{version_clean}-{platform}",
+            f"{app_name}-{platform}",
+        ]
+        cache_path = None
+        for binary_name in candidates:
+            cache_path = self._download_release_asset(
+                app_name, release, binary_name,
+            )
+            if cache_path:
+                break
         if not cache_path:
             self.logger.debug(f"No binary found for {platform}")
             return None, version_tag

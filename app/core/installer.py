@@ -74,6 +74,10 @@ class Installer:
         """Install binary to ~/.pget/bin."""
         dest = get_binary_path(app_name)
 
+        # Drop any script-mode tree so ~/.pget/script/<app> is not confused with
+        # Nuitka onefile extraction or stale wrappers (fixes broken bin stubs).
+        uninstall_script(app_name)
+
         self.logger.progress(f"Installing {app_name} to {dest}")
 
         # Copy binary to bin directory

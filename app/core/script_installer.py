@@ -94,13 +94,22 @@ def install_as_script(source_path, app_name, version, source_url):
 
     # Create executable wrapper in bin
     wrapper_path = PGET_BIN / app_name
-    wrapper_content = f"""#!/usr/bin/env python3
+    wrapper_content = """#!/usr/bin/env python3
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path.home() / ".pget" / "script" / "{app_name}"))
+_root = Path.home() / ".pget" / "script" / "{app_name}"
+if not (_root / "app" / "main.py").exists():
+    print(
+        "pget: {app_name} script install is missing or broken "
+        "(expected source under ~/.pget/script/{app_name}/). "
+        "Try: pget install {app_name}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+sys.path.insert(0, str(_root))
 from app.main import main
 sys.exit(main())
-"""
+""".format(app_name=app_name)
     wrapper_path.write_text(wrapper_content)
     wrapper_path.chmod(
         wrapper_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH,
