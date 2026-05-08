@@ -127,37 +127,87 @@ def run(args):
             overall_success = False
             continue
 
-        # Special-case installing pget itself from the local repo (only if no specific
-        # version requested)
+        # Special-case installing pget itself from the local repo (only if no
+        # specific version requested). Order: release binary, local Bazel, script.
         if app_name == "pget" and not requested_version:
-            logger.info("Installing pget from local source")
+            logger.info("Installing pget")
             source_path = Path(__file__).resolve().parents[2]
             platform = get_platform_string()
+            repo_info = fetcher.get_repo_info(app_name)
+            source_url = repo_info.get("html_url", "") if repo_info else ""
+            module_bazel = source_path / "MODULE.bazel"
+            build_file = source_path / "BUILD"
+            has_bazel_project = module_bazel.exists() or build_file.exists()
             success = False
 
-            # Honor --script flag for pget self-install
             if script_mode:
-                logger.info("Installing as Python script (no compilation)")
+                logger.info(
+                    "Installing pget from local tree as Python script (--script)",
+                )
                 success = install_as_script(
                     source_path,
                     app_name,
                     PGET_VERSION,
                     str(source_path),
                 )
+            elif build_mode:
+                logger.info(
+                    "Building pget from local source with Bazel+Nuitka (--build)",
+                )
+                success = installer.install_with_bazel(
+                    source_path=source_path,
+                    app_name=app_name,
+                    version=PGET_VERSION,
+                    source_url=str(source_path),
+                    platform=platform,
+                )
             else:
-                bazel = shutil.which("bazelisk") or shutil.which("bazel")
-                module_bazel = source_path / "MODULE.bazel"
-                build_file = source_path / "BUILD"
-                if bazel and (module_bazel.exists() or build_file.exists()):
-                    success = installer.install_with_bazel(
-                        source_path=source_path,
+                binary_result = fetcher.download_binary(
+                    app_name,
+                    platform,
+                    version=None,
+                )
+                if binary_result and binary_result[0]:
+                    binary_path, version = binary_result
+                    logger.debug("Downloading source for documentation")
+                    use_edge = edge_mode and not requested_version
+                    source_result = fetcher.download_app_directory(
+                        app_name,
+                        edge=use_edge,
+                        version=None,
+                    )
+                    doc_source_path = source_result[0] if source_result else None
+                    success = installer.install_binary(
+                        binary_path=binary_path,
                         app_name=app_name,
-                        version=PGET_VERSION,
-                        source_url=str(source_path),
+                        version=version,
+                        source_url=source_url,
                         platform=platform,
                     )
-                else:
-                    logger.info("Installing as Python script (no compilation)")
+                    if success and doc_source_path:
+                        installer.install_doc_files(doc_source_path, app_name)
+
+                if not success:
+                    bazel = shutil.which("bazelisk") or shutil.which("bazel")
+                    if bazel and has_bazel_project:
+                        logger.info(
+                            "No usable release binary; building pget from local "
+                            "source with Bazel+Nuitka",
+                        )
+                        success = installer.install_with_bazel(
+                            source_path=source_path,
+                            app_name=app_name,
+                            version=PGET_VERSION,
+                            source_url=str(source_path),
+                            platform=platform,
+                        )
+
+                if not success:
+                    logger.info(
+                        "Installing pget from local tree as Python script "
+                        "(no binary for this platform or download failed; "
+                        "no Bazel build)",
+                    )
                     success = install_as_script(
                         source_path,
                         app_name,
