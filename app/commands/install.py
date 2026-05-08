@@ -279,7 +279,7 @@ def run(args):
                 # Check for newer version
                 release = fetcher.get_latest_release(app_name)
                 if release:
-                    latest_version = release.get("tag_name", "unknown")
+                    latest_version = release.get("tag_name", "unknown").lstrip('v')
                     if (
                         latest_version != current_version and
                         latest_version != "unknown"
