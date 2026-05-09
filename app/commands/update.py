@@ -3,14 +3,13 @@
 # Author: @spacemany2k38
 # 2025-12-24
 
-import os
+import re
 import shutil
-import tempfile
 from pathlib import Path
 from ..core.fetcher import GitHubFetcher
 from ..core.installer import Installer
 from ..utils.logger import get_logger
-from ..utils.paths import get_binary_path, find_existing_binary
+from ..utils.paths import get_binary_path, get_doc_dir, find_existing_binary
 from ..utils.platform import get_platform_string
 
 
@@ -20,6 +19,25 @@ def _version_tuple(v):
         return tuple(int(x) for x in str(v).lstrip('v').split('.'))
     except (ValueError, AttributeError):
         return (0,)
+
+
+def _ensure_helpers(app_name, expected_version, fetcher, installer, logger):
+    """Refresh helper docs if missing or stale."""
+    doc_yaml = get_doc_dir(app_name) / f"{app_name}.yaml"
+    if doc_yaml.exists():
+        try:
+            content = doc_yaml.read_text(encoding="utf-8")
+            m = re.search(r'^VERSION:\s*"?([^"\n]+)', content, re.M)
+            if m and m.group(1).strip() == str(expected_version):
+                return
+        except OSError:
+            pass
+    logger.debug(f"Refreshing helper docs for {app_name}")
+    source_result = fetcher.download_app_directory(
+        app_name, version=str(expected_version),
+    )
+    if source_result and source_result[0]:
+        installer.install_doc_files(source_result[0], app_name)
 
 
 def update_pget_self(
@@ -63,6 +81,7 @@ def update_pget_self(
 
         if _version_tuple(latest_version) <= _version_tuple(current_version):
             logger.info(f"pget is already at the latest version ({current_version})")
+            _ensure_helpers('pget', current_version, fetcher, installer, logger)
             return True
 
         logger.info(f"Updating pget from {current_version} to {latest_version}")
@@ -141,15 +160,9 @@ def update_pget_self(
                         platform,
                     )
 
-                    # Refresh helper docs
-                    source_result = fetcher.download_app_directory(
-                        'pget',
-                        version=latest_version,
+                    _ensure_helpers(
+                        'pget', latest_version, fetcher, installer, logger,
                     )
-                    if source_result and source_result[0]:
-                        installer.install_doc_files(
-                            source_result[0], 'pget',
-                        )
 
                     logger.success(f"pget updated to {latest_version}")
                     logger.info("Restart pget to use the new version")
@@ -399,6 +412,9 @@ def run(args):
         if _version_tuple(latest_version) <= _version_tuple(current_version):
             logger.info(
                 f'{app_name} is already at the latest version ({current_version})',
+            )
+            _ensure_helpers(
+                app_name, current_version, fetcher, installer, logger,
             )
             continue
 
