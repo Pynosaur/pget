@@ -141,6 +141,16 @@ def update_pget_self(
                         platform,
                     )
 
+                    # Refresh helper docs
+                    source_result = fetcher.download_app_directory(
+                        'pget',
+                        version=latest_version,
+                    )
+                    if source_result and source_result[0]:
+                        installer.install_doc_files(
+                            source_result[0], 'pget',
+                        )
+
                     logger.success(f"pget updated to {latest_version}")
                     logger.info("Restart pget to use the new version")
 
