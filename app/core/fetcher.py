@@ -4,6 +4,7 @@
 # 2025-12-24
 
 import json
+import os
 import ssl
 import tarfile
 import urllib.error
@@ -13,6 +14,49 @@ from ..utils.logger import get_logger
 from ..utils.paths import get_cache_path, get_temp_cache_dir
 from ..utils.platform import get_platform_string
 from .config import GITHUB_API, GITHUB_RAW, PYNOSAUR_ORG
+
+_CERT_PATHS = [
+    "/etc/ssl/cert.pem",
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/opt/homebrew/etc/openssl@3/cert.pem",
+    "/usr/local/etc/openssl@3/cert.pem",
+    "/opt/homebrew/etc/openssl/cert.pem",
+    "/usr/local/etc/openssl/cert.pem",
+]
+
+
+def _build_ssl_context(verify):
+    """Build an SSL context that works across macOS/Linux Python installs."""
+    if not verify:
+        return ssl._create_unverified_context()
+
+    ctx = ssl.create_default_context()
+    try:
+        urllib.request.urlopen(
+            urllib.request.Request("https://api.github.com"),
+            timeout=5,
+            context=ctx,
+        )
+        return ctx
+    except urllib.error.URLError:
+        pass
+
+    try:
+        import certifi
+        ctx.load_verify_locations(certifi.where())
+        return ctx
+    except (ImportError, OSError):
+        pass
+
+    for path in _CERT_PATHS:
+        if os.path.isfile(path):
+            try:
+                ctx = ssl.create_default_context(cafile=path)
+                return ctx
+            except OSError:
+                continue
+
+    return None
 
 
 class GitHubFetcher:
@@ -25,14 +69,18 @@ class GitHubFetcher:
         self.raw_base = GITHUB_RAW
         self.verify_ssl = verify_ssl
 
-        # Create SSL context if needed
         if not verify_ssl:
             self.ssl_context = ssl._create_unverified_context()
             self.logger.warning(
                 'SSL verification disabled - not recommended for security!',
             )
         else:
-            self.ssl_context = None
+            self.ssl_context = _build_ssl_context(verify=True)
+            if self.ssl_context is None:
+                self.logger.warning(
+                    "Could not find CA certificates; falling back to unverified SSL",
+                )
+                self.ssl_context = ssl._create_unverified_context()
 
     def _api_request(self, url):
         """Make API request to GitHub."""
@@ -40,23 +88,16 @@ class GitHubFetcher:
             req = urllib.request.Request(url)
             req.add_header('Accept', 'application/vnd.github.v3+json')
 
-            kwargs = {'timeout': 30}
-            if self.ssl_context:
-                kwargs['context'] = self.ssl_context
-
-            with urllib.request.urlopen(req, **kwargs) as response:
+            with urllib.request.urlopen(
+                req, timeout=30, context=self.ssl_context,
+            ) as response:
                 return json.loads(response.read().decode())
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
             raise
         except urllib.error.URLError as e:
-            if 'CERTIFICATE_VERIFY_FAILED' in str(e.reason):
-                self.logger.error(
-                    "SSL certificate error — run: pip3 install --upgrade certifi"
-                )
-            else:
-                self.logger.error(f"Network error: {e.reason}")
+            self.logger.error(f"Network error: {e.reason}")
             return None
 
     def _download_file(self, url, dest_path):
@@ -64,11 +105,9 @@ class GitHubFetcher:
         self.logger.debug(f"Downloading from {url}")
 
         try:
-            kwargs = {'timeout': 60}
-            if self.ssl_context:
-                kwargs['context'] = self.ssl_context
-
-            with urllib.request.urlopen(url, **kwargs) as response:
+            with urllib.request.urlopen(
+                url, timeout=60, context=self.ssl_context,
+            ) as response:
                 total_size = response.getheader('Content-Length')
                 if total_size:
                     total_size = int(total_size)
@@ -84,12 +123,7 @@ class GitHubFetcher:
                 self.logger.info(f"Downloaded {dest_path.name}")
                 return dest_path
         except urllib.error.URLError as e:
-            if 'CERTIFICATE_VERIFY_FAILED' in str(e.reason):
-                self.logger.error(
-                    "SSL certificate error — run: pip3 install --upgrade certifi"
-                )
-            else:
-                self.logger.error(f"Download failed: {e.reason}")
+            self.logger.error(f"Download failed: {e.reason}")
             return None
 
     def get_repo_info(self, app_name):
