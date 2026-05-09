@@ -3,23 +3,9 @@
 # Author: @spacemany2k38
 # 2025-12-24
 
-import json
-import urllib.error
-import urllib.request
 from ..core.config import PYNOSAUR_ORG, GITHUB_API, GITHUB_RAW
+from ..core.fetcher import GitHubFetcher
 from ..utils.logger import get_logger
-
-
-def _has_program_marker(org, repo_name, api_base, raw_base):
-    """Check if repo has .program marker file."""
-    # Check via raw.githubusercontent.com (faster, no API rate limit)
-    url = f"{raw_base}/{org}/{repo_name}/main/.program"
-    try:
-        req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, timeout=5) as response:
-            return response.status == 200
-    except (urllib.error.HTTPError, urllib.error.URLError):
-        return False
 
 
 def run(args):
@@ -28,39 +14,35 @@ def run(args):
     Usage: pget search [query]
     """
     logger = get_logger()
+    fetcher = GitHubFetcher()
 
-    org = PYNOSAUR_ORG
-    api_base = GITHUB_API
-    raw_base = GITHUB_RAW
+    url = f"{GITHUB_API}/orgs/{PYNOSAUR_ORG}/repos?per_page=100"
+    repos = fetcher.fetch_json(url)
 
-    # List all repos in pynosaur org
-    url = f"{api_base}/orgs/{org}/repos?per_page=100"
-
-    try:
-        req = urllib.request.Request(url)
-        req.add_header('Accept', 'application/vnd.github.v3+json')
-
-        with urllib.request.urlopen(req, timeout=30) as response:
-            repos = json.loads(response.read().decode())
-    except urllib.error.URLError as e:
-        logger.error(f"Failed to fetch packages: {e.reason}")
+    if repos is None:
+        logger.error("Failed to fetch packages")
         return False
 
     if not repos:
         logger.info("No packages found")
         return True
 
-    # Filter by query if provided
     query = args[0].lower() if args else None
 
     if query:
-        repos = [r for r in repos if query in r["name"].lower() or
-                    query in r.get("description", "").lower()]
+        repos = [
+            r for r in repos
+            if query in r["name"].lower()
+            or query in r.get("description", "").lower()
+        ]
 
-    # Filter repos with .program marker
     installable_repos = []
     for repo in repos:
-        if _has_program_marker(org, repo["name"], api_base, raw_base):
+        marker_url = (
+            f"{GITHUB_RAW}/{PYNOSAUR_ORG}"
+            f"/{repo['name']}/main/.program"
+        )
+        if fetcher.url_exists(marker_url):
             installable_repos.append(repo)
 
     if not installable_repos:

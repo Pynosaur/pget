@@ -3,10 +3,8 @@
 # Author: @spacemany2k38
 # 2026-01-03
 
-import json
-import urllib.request
-import urllib.error
 from ..core.config import PYNOSAUR_ORG, GITHUB_API
+from ..core.fetcher import GitHubFetcher
 from ..utils.logger import get_logger
 
 
@@ -22,27 +20,16 @@ def run(args):
 
     app_name = args[0]
     logger = get_logger()
+    fetcher = GitHubFetcher()
 
-    org = PYNOSAUR_ORG
-    api_base = GITHUB_API
+    url = (
+        f"{GITHUB_API}/repos/{PYNOSAUR_ORG}"
+        f"/{app_name}/releases?per_page=100"
+    )
+    releases = fetcher.fetch_json(url)
 
-    # Get all releases for the app
-    url = f"{api_base}/repos/{org}/{app_name}/releases?per_page=100"
-
-    try:
-        req = urllib.request.Request(url)
-        req.add_header('Accept', 'application/vnd.github.v3+json')
-
-        with urllib.request.urlopen(req, timeout=30) as response:
-            releases = json.loads(response.read().decode())
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            logger.error(f"Package '{app_name}' not found")
-            return False
-        logger.error(f"Failed to fetch releases: {e}")
-        return False
-    except urllib.error.URLError as e:
-        logger.error(f"Network error: {e.reason}")
+    if releases is None:
+        logger.error(f"Package '{app_name}' not found or network error")
         return False
 
     if not releases:

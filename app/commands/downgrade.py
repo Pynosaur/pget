@@ -3,10 +3,6 @@
 # Author: @spacemany2k38
 # 2026-05-02
 
-import json
-import urllib.request
-import urllib.error
-
 from ..core.config import PYNOSAUR_ORG, GITHUB_API
 from ..core.fetcher import GitHubFetcher
 from ..core.installer import Installer
@@ -24,21 +20,17 @@ def _version_tuple(v):
 def _list_older_versions(app_name, current_version):
     """Fetch and display versions older than the current installed version."""
     logger = get_logger()
-    url = f"{GITHUB_API}/repos/{PYNOSAUR_ORG}/{app_name}/releases?per_page=100"
+    fetcher = GitHubFetcher()
+    url = (
+        f"{GITHUB_API}/repos/{PYNOSAUR_ORG}"
+        f"/{app_name}/releases?per_page=100"
+    )
+    releases = fetcher.fetch_json(url)
 
-    try:
-        req = urllib.request.Request(url)
-        req.add_header('Accept', 'application/vnd.github.v3+json')
-        with urllib.request.urlopen(req, timeout=30) as response:
-            releases = json.loads(response.read().decode())
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            logger.error(f"Package '{app_name}' not found")
-        else:
-            logger.error(f"Failed to fetch releases: {e}")
-        return False
-    except urllib.error.URLError as e:
-        logger.error(f"Network error: {e.reason}")
+    if releases is None:
+        logger.error(
+            f"Package '{app_name}' not found or network error",
+        )
         return False
 
     current = _version_tuple(current_version)

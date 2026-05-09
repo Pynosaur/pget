@@ -82,14 +82,14 @@ class GitHubFetcher:
                 )
                 self.ssl_context = ssl._create_unverified_context()
 
-    def _api_request(self, url):
-        """Make API request to GitHub."""
+    def fetch_json(self, url, timeout=30):
+        """Fetch a URL and return parsed JSON (None on error/404)."""
         try:
             req = urllib.request.Request(url)
             req.add_header('Accept', 'application/vnd.github.v3+json')
 
             with urllib.request.urlopen(
-                req, timeout=30, context=self.ssl_context,
+                req, timeout=timeout, context=self.ssl_context,
             ) as response:
                 return json.loads(response.read().decode())
         except urllib.error.HTTPError as e:
@@ -99,6 +99,21 @@ class GitHubFetcher:
         except urllib.error.URLError as e:
             self.logger.error(f"Network error: {e.reason}")
             return None
+
+    def url_exists(self, url, timeout=5):
+        """Check if a URL is reachable (HEAD-like probe)."""
+        try:
+            req = urllib.request.Request(url)
+            urllib.request.urlopen(
+                req, timeout=timeout, context=self.ssl_context,
+            )
+            return True
+        except (urllib.error.HTTPError, urllib.error.URLError):
+            return False
+
+    def _api_request(self, url):
+        """Make API request to GitHub."""
+        return self.fetch_json(url)
 
     def _download_file(self, url, dest_path):
         """Download file from URL."""

@@ -4,8 +4,6 @@
 # 2025-12-24
 
 import shutil
-import urllib.error
-import urllib.request
 from pathlib import Path
 from ..core.config import IGNORED_REPOS
 from ..core.fetcher import GitHubFetcher
@@ -318,16 +316,19 @@ def run(args):
             continue
 
         # Check if repo has .program marker (indicates it's an installable app)
-        from ..core.config import GITHUB_RAW, PYNOSAUR_ORG
-        program_url = f"{GITHUB_RAW}/{PYNOSAUR_ORG}/{app_name}/main/.program"
-        try:
-            req = urllib.request.Request(program_url)
-            urllib.request.urlopen(req, timeout=5)
-        except (urllib.error.HTTPError, urllib.error.URLError):
+        program_url = (
+            f"{fetcher.raw_base}/{fetcher.org}"
+            f"/{app_name}/main/.program"
+        )
+        if not fetcher.url_exists(program_url):
             logger.error(
-                f"'{app_name}' is not an installable program (missing .program marker)",
+                f"'{app_name}' is not an installable program "
+                f"(missing .program marker)",
             )
-            logger.info("This repository may be a website or documentation-only repo")
+            logger.info(
+                "This repository may be a website "
+                "or documentation-only repo",
+            )
             overall_success = False
             continue
 
